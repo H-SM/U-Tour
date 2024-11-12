@@ -1,31 +1,77 @@
-.App {
-  text-align: center;
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap');
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Track */
+::-webkit-scrollbar-track {
+  background: #443F3F;
+  border-radius: 5px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #E8EAF6;
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #d4d4d5;
+}
+
+select option {
+  margin: 40px;
+  color: #000000;
+}
+
+.custom-phone-input .PhoneInputInput {
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  font-size: large;
+}
+
+.custom-phone-input .PhoneInputInput:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+.animate-gradient {
+  background-size: 300%;
+  -webkit-animation: animatedgradient 6s ease infinite alternate;
+  -moz-animation: animatedgradient 6s ease infinite alternate;
+  animation: animatedgradient 6s ease infinite alternate;
+}
+
+@keyframes animatedgradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
-}
-
-.App-link {
-  color: #61dafb;
+@keyframes bounce {
+  0%,
+  50%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(25px);
+  }
+  75% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes App-logo-spin {
@@ -35,4 +81,9 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+
+.animate-bounce-slow {
+  animation: bounce 10s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
