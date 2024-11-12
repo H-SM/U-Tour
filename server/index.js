@@ -35,6 +35,8 @@ app.get("/test-firebase-admin", async (req, res) => {
 
 app.use("/mail", require("./routes/mailer"));
 app.use('/users', require('./routes/user'));
+app.use("/sessions", require("./routes/session")); 
+
 app.listen(port, () => {
   console.log(`Server is running at ${port}`);
 });

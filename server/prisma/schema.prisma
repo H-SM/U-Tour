@@ -19,3 +19,23 @@ model User {
   email   String   @unique
   name    String?
 }
+
+model Session {
+  id            String     @id @default(uuid()) // UUID as id
+  userId        String
+  state         SessionState
+  to            String
+  from          String
+  departureTime DateTime
+  tourType      String
+  createdAt     DateTime   @default(now())
+  expiredAt     DateTime?
+}
+
+enum SessionState {
+  DONE
+  ACTIVE
+  QUEUED
+  CANCEL
+  ERROR
+}
