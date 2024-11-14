@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,21 +9,41 @@ datasource db {
 }
 
 model User {
-  id      Int      @id @default(autoincrement())
-  email   String   @unique
-  name    String?
+  id                String    @id 
+  email             String    @unique
+  displayName       String?
+  migratedToFirebase Boolean  @default(false)
+  firebaseUid       String?   @unique
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model Session {
-  id            String     @id @default(uuid()) // UUID as id
-  userId        String
-  state         SessionState
-  to            String
-  from          String
-  departureTime DateTime
-  tourType      String
-  createdAt     DateTime   @default(now())
-  expiredAt     DateTime?
+  id                    String      @id
+  bookingUserId         String     
+  userId                String     
+  isBookedByFirebaseUser Boolean    @default(true)
+  isUserFirebaseUser    Boolean     @default(true)  
+  state                 SessionState
+  to                    String
+  from                  String
+  departureTime         DateTime
+  tourType             String
+  createdAt            DateTime    @default(now())
+  expiredAt            DateTime?
+  team                 Team?      
+}
+
+model Team {
+  id               String   @id @default(uuid())
+  sessionId        String   @unique
+  contactId        String  
+  isFirebaseContact Boolean @default(true)
+  name             String
+  size             Int
+  notes            String?
+  createdAt        DateTime @default(now())
+  session          Session  @relation(fields: [sessionId], references: [id])
 }
 
 enum SessionState {

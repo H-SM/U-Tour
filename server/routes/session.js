@@ -2,28 +2,118 @@ const express = require("express");
 const { PrismaClient } = require("@prisma/client");
 const admin = require("firebase-admin");
 const router = express.Router();
+const { handleUserCreation } = require("./../utils/userManager");
+const { generateCustomId } = require("./../utils/idGenerator");
 
 const prisma = new PrismaClient();
 
 // Route to create a new session
 router.post("/create", async (req, res) => {
   try {
-    const { userId, to, from, departureTime, tourType } = req.body;
+    const {
+      bookingUserId, // Firebase UID or email of booking user
+      userEmail, // Email of user for whom session is booked
+      userName, // Name of user for whom session is booked
+      to,
+      from,
+      departureTime,
+      tourType,
+      team, // Optional team information
+    } = req.body;
 
-    // Verify if the user exists in Firebase
-    const userRecord = await admin.auth().getUser(userId);
-    if (!userRecord)
-      return res.status(404).json({ error: "User not found in Firebase" });
+    // Handle booking user
+    let finalBookingUserId;
+    let isBookedByFirebaseUser = false;
+    let bookingUserEmail;
+
+    if (bookingUserId.includes("@")) {
+      // Email provided - first check if user exists in Firebase
+      try {
+        const bookingUserRecord = await admin
+          .auth()
+          .getUserByEmail(bookingUserId);
+        finalBookingUserId = bookingUserRecord.uid;
+        isBookedByFirebaseUser = true;
+        bookingUserEmail = bookingUserId;
+      } catch (error) {
+        // Not in Firebase - create/get non-Firebase user
+        const bookingUser = await handleUserCreation({
+          email: bookingUserId,
+          displayName: userName,
+        });
+        finalBookingUserId = bookingUser.id;
+        bookingUserEmail = bookingUserId;
+      }
+    } else {
+      // Firebase UID provided - fetch user details
+      try {
+        const bookingUserRecord = await admin.auth().getUser(bookingUserId);
+        finalBookingUserId = bookingUserId;
+        isBookedByFirebaseUser = true;
+        bookingUserEmail = bookingUserRecord.email;
+      } catch (error) {
+        return res.status(400).json({ error: "Invalid booking user ID" });
+      }
+    }
+
+    // Handle user for whom session is booked
+    let finalUserId;
+    let isUserFirebaseUser = false;
+    try {
+      // Check if user exists in Firebase
+      const userRecord = await admin.auth().getUserByEmail(userEmail);
+      finalUserId = userRecord.uid;
+      isUserFirebaseUser = true;
+
+      // If booking user email matches session user email, ensure we use the same ID type
+      if (bookingUserEmail === userEmail) {
+        finalBookingUserId = finalUserId;
+        isBookedByFirebaseUser = true;
+      }
+    } catch (error) {
+      // User not in Firebase - create/get from User table
+      const sessionUser = await handleUserCreation({
+        email: userEmail,
+        displayName: userName,
+      });
+      finalUserId = sessionUser.id;
+
+      // If booking user email matches session user email, ensure we use the same ID type
+      if (bookingUserEmail === userEmail) {
+        finalBookingUserId = finalUserId;
+        isBookedByFirebaseUser = false;
+      }
+    }
 
     // Create the session
     const session = await prisma.session.create({
       data: {
-        userId,
-        state: "QUEUED", // Default state
+        id: generateCustomId(),
+        bookingUserId: finalBookingUserId,
+        userId: finalUserId,
+        isBookedByFirebaseUser,
+        isUserFirebaseUser,
+        state: "QUEUED",
         to,
         from,
         departureTime: new Date(departureTime),
         tourType,
+        ...(team && {
+          team: {
+            create: {
+              id: generateCustomId(),
+              name: team.name,
+              size: team.size,
+              notes: team.notes,
+              contactId: finalUserId,
+              isFirebaseContact: isUserFirebaseUser,
+            },
+          },
+        }),
+      },
+      include: {
+        team: true,
+        ...(!isBookedByFirebaseUser || !isUserFirebaseUser),
       },
     });
 
@@ -69,7 +159,7 @@ router.get("/:sessionId", async (req, res) => {
     if (!session) return res.status(404).json({ error: "Session not found" });
 
     res.json({
-      session
+      session,
     });
   } catch (error) {
     console.error("Error fetching session data:", error);
@@ -151,7 +241,7 @@ router.get("/stats", async (req, res) => {
 });
 
 // Get detailed information for a single session TODO: NEED FIX - kinda irrelevant due to the old existing route
-router.get('/:sessionId/details', async (req, res) => {
+router.get("/:sessionId/details", async (req, res) => {
   try {
     const { sessionId } = req.params;
 
@@ -166,13 +256,13 @@ router.get('/:sessionId/details', async (req, res) => {
         departureTime: true,
         tourType: true,
         createdAt: true,
-        expiredAt: true, 
+        expiredAt: true,
         userId: true,
       },
     });
 
     if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
+      return res.status(404).json({ error: "Session not found" });
     }
 
     // Get user information from Firebase
@@ -181,7 +271,7 @@ router.get('/:sessionId/details', async (req, res) => {
     // Get session history (assuming you have a sessionHistory table)
     const sessionHistory = await prisma.sessionHistory.findMany({
       where: { sessionId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       select: {
         state: true,
         createdAt: true,
@@ -190,9 +280,10 @@ router.get('/:sessionId/details', async (req, res) => {
     });
 
     // Calculate session duration if applicable
-    const sessionDuration = session.state === 'DONE' 
-      ? calculateSessionDuration(session.createdAt, session.updatedAt)
-      : null;
+    const sessionDuration =
+      session.state === "DONE"
+        ? calculateSessionDuration(session.createdAt, session.updatedAt)
+        : null;
 
     const response = {
       session: {
@@ -213,8 +304,8 @@ router.get('/:sessionId/details', async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error('Error fetching session details:', error);
-    res.status(500).json({ error: 'Failed to fetch session details' });
+    console.error("Error fetching session details:", error);
+    res.status(500).json({ error: "Failed to fetch session details" });
   }
 });
 
@@ -223,7 +314,7 @@ function calculateSessionDuration(startDate, endDate) {
   const start = new Date(startDate);
   const end = new Date(endDate);
   const durationMs = end - start;
-  
+
   return {
     milliseconds: durationMs,
     seconds: Math.floor(durationMs / 1000),
@@ -231,6 +322,5 @@ function calculateSessionDuration(startDate, endDate) {
     hours: Math.floor(durationMs / (1000 * 60 * 60)),
   };
 }
-
 
 module.exports = router;

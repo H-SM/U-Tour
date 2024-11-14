@@ -363,7 +363,7 @@ const Home = ({ showAlert }) => {
                   </div>
                 </div> */}
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d766.3298335390363!2d77.9669056671879!3d30.416124086975763!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3908d523ca353cf3%3A0xc481116cc08ab6c!2s9th%20Block%2C%20UPES!5e0!3m2!1sen!2sin!4v1729265456400!5m2!1sen!2sin"
+                  src="https://www.google.com/maps/embed/v1/directions?origin=UPES+Hubble&destination=UPES+Cricket+Ground&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8"
                   style={{ border: "0", width: "100%", height: "100%" }}
                   allowfullscreen=""
                   loading="lazy"

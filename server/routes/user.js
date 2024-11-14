@@ -3,6 +3,7 @@ const { PrismaClient } = require("@prisma/client");
 const admin = require("firebase-admin");
 const router = express.Router();
 const prisma = new PrismaClient();
+const { migrateToFirebase } = require("./../utils/userManager");
 
 router.get("/:userId", async (req, res) => {
   try {
@@ -64,6 +65,85 @@ router.get("/:userId/sessions", async (req, res) => {
   } catch (error) {
     console.error("Error fetching user sessions:", error);
     res.status(500).json({ error: "Failed to fetch user sessions" });
+  }
+});
+
+// Route to handle user migration when they sign up with Firebase
+router.post("/migrate-user", async (req, res) => {
+  try {
+    const { email, firebaseUid } = req.body;
+
+    const result = await migrateToFirebase(email, firebaseUid);
+
+    if (!result) {
+      return res.status(404).json({ error: "No user found to migrate" });
+    }
+
+    res.json({ success: true, firebaseUid: result });
+  } catch (error) {
+    console.error("Error migrating user:", error);
+    res.status(500).json({ error: "Failed to migrate user" });
+  }
+});
+
+// Search users by display name or email
+router.post("/search", async (req, res) => {
+  try {
+    const { query } = req.body;
+
+    if (!query || query.length < 3) {
+      return res.status(400).json({
+        error: "Search query must be at least 3 characters long",
+      });
+    }
+
+    // Initialize an array to store matching users
+    const matchingUsers = [];
+
+    // Get all users (Firebase Admin SDK doesn't support direct searching)
+    // Use listUsers to paginate through all users
+    let usersResult = await admin.auth().listUsers(1000);
+
+    // Filter users based on the search query
+    usersResult.users.forEach((userRecord) => {
+      const { displayName, email, photoURL, uid } = userRecord;
+
+      // Check if display name or email matches the search query (case-insensitive)
+      if (
+        (displayName &&
+          displayName.toLowerCase().includes(query.toLowerCase())) ||
+        (email && email.toLowerCase().includes(query.toLowerCase()))
+      ) {
+        matchingUsers.push({
+          displayName,
+          email,
+          photoURL,
+          uid,
+        });
+      }
+    });
+
+    // Handle pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+
+    const paginatedUsers = matchingUsers.slice(startIndex, endIndex);
+
+    res.json({
+      users: paginatedUsers,
+      pagination: {
+        total: matchingUsers.length,
+        page,
+        limit,
+        totalPages: Math.ceil(matchingUsers.length / limit),
+      },
+      query,
+    });
+  } catch (error) {
+    console.error("Error searching users:", error);
+    res.status(500).json({ error: "Failed to search users" });
   }
 });
 
