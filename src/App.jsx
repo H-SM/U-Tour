@@ -5,6 +5,7 @@ import './App.css'
 import Home from "./pages/Home";
 import Alert from "./components/alert";
 import Login from "./pages/Login";
+import SampleHome from "./pages/SampleHome";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -25,7 +26,7 @@ function App() {
         <Router>
           <Routes>
             {/* <Route exact path="/dashboard" element={} /> */}
-            <Route exact path="/" element={<Home  showAlert={showAlert}/>} />
+            <Route exact path="/" element={<SampleHome  showAlert={showAlert}/>} />
             <Route exact path="/login" element={<Login showAlert={showAlert}/>} />
             {/* <Route path="*" element={<NotFound />} /> */}
           </Routes>
