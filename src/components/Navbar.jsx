@@ -3,13 +3,13 @@ import React from "react";
 const Navbar = ({ userDetailsFirebase, logoutUser }) => {
   return (
     <nav className="w-full bg-black/20 backdrop-blur-md border-b border-white/10">
-      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <div className="h-full w-fit justify-center items-start text-start">
+      <div className="container mx-auto px-4 py-4 flex justify-end items-center">
+        {/* <div className="h-full w-fit justify-center items-start text-start">
           <div className="text-white font-bold text-2xl">U Tour</div>
           <div className="text-white text-[0.8rem] px-1">Your robot tour</div>
-        </div>
+        </div> */}
         <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end text-white">
+          <div className="hidden xs:flex flex-col items-end text-white">
             <div className="font-semibold">
               {userDetailsFirebase?.displayName}
             </div>

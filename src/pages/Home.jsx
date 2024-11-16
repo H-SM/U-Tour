@@ -1,16 +1,20 @@
 import React, { useContext, useEffect, useState } from "react";
-import { MapPin, Clock, Mail, Users, User, Navigation } from "lucide-react";
-import useFirebaseAuth from "../hooks/useFirebaseAuth";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { Home, Settings, Calendar, ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import ContextValue from "../context/EventContext";
-import axios from "axios";
+import useFirebaseAuth from "../hooks/useFirebaseAuth";
+import Destination from "../components/Home/Destination";
+import MapSection from "../components/Home/MapSection";
+import Navbar from "../components/Navbar";
+import InputForm from "../components/Home/InputForm";
 
-const Home = ({ showAlert }) => {
+const Dashboard = ({ showAlert }) => {
   const navigate = useNavigate();
-  const { userDetailsFirebase, setUserDetailsFirebase } =
-    useContext(ContextValue);
-  const { signOutUser } = useFirebaseAuth();
-  const API_URL = process.env.REACT_APP_API_URL;
+  const { userDetailsFirebase, setUserDetailsFirebase } = useContext(ContextValue);
+  const { signOutUser, checkAuth } = useFirebaseAuth();
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  
   const [bookingData, setBookingData] = useState({
     name: "",
     type: "single",
@@ -18,9 +22,22 @@ const Home = ({ showAlert }) => {
     to: "",
     departureTime: "",
     email: "",
+    teamSize: 1,
+    teamNotes: "",
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const locations = [
+    { value: "Bidholi-magic-stand", label: "Main Gate" },
+    { value: "hubble", label: "The Hubble" },
+    { value: "aditya-block", label: "Aditya Block" },
+    { value: "upes-cricket-ground", label: "Cricket Ground" },
+  ];
+
+  const navItems = [
+    { path: '/', icon: Home, label: 'Dashboard' },
+    { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/sessions', icon: Calendar, label: 'Sessions' },
+  ];
 
   const logoutUser = () => {
     signOutUser();
@@ -36,346 +53,122 @@ const Home = ({ showAlert }) => {
     }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    if (Object.values(bookingData).some((value) => value === "")) {
-      showAlert("Please fill in all fields before booking.", "warning");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const response = await axios.post(`${API_URL}/mail/send-mail`, {
-        to: bookingData.to,
-        from: bookingData.from,
-        departureTime: bookingData.departureTime,
-        name: bookingData.name,
-        tourType: bookingData.type,
-        email: bookingData.email,
-      });
-
-      if (response.data.status === "success") {
-        showAlert(
-          "Booking confirmed! Check your email for details.",
-          "success"
-        );
-        // Optionally reset the form or navigate to a confirmation page
-        setBookingData({
-          name: "",
-          type: "single",
-          from: "",
-          to: "",
-          departureTime: "",
-          email: "",
-        });
-      } else {
-        showAlert("Booking failed. Please try again.", "error");
-      }
-    } catch (error) {
-      console.error("Error sending email:", error);
-      showAlert("An error occurred. Please try again later.", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const { checkAuth } = useFirebaseAuth();
-
   useEffect(() => {
     const authenticateUser = async () => {
       try {
         const user = await checkAuth();
-        if (user) {
-          console.log(user);
-          setBookingData({
-            name: user.displayName,
-            type: "single",
-            from: "",
-            to: "",
-            departureTime: "",
-            email: user.email,
-          });
-        } else {
+        if (!user) {
           navigate("/login");
         }
       } catch (error) {
         console.error("Authentication error:", error);
       }
     };
-
     authenticateUser();
   }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      <div className="w-full min-h-screen backdrop-blur-sm">
-        <nav className="w-full bg-black/20 backdrop-blur-md border-b border-white/10">
-          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div className="text-white font-bold text-2xl">U Robot</div>
-            <div className="flex flex-row-reverse justify-end items-center  h-[3rem] gap-2">
-              <div className="w-[2.8rem] h-[3rem] rounded-full flex justify-center items-center">
-                <img
-                  className="w-[2.8rem] rounded-full object-contain"
-                  src={
-                    userDetailsFirebase && userDetailsFirebase.photoURL
-                      ? userDetailsFirebase.photoURL
-                      : "https://avatars.githubusercontent.com/u/98532264?s=400&u=0cf330740554169402dccc6d6925c21d8850cf03&v=4"
-                  }
-                  alt=""
+      {/* Mobile Menu Button */}
+      <button
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-slate-800 text-white"
+        onClick={() => setIsMobileOpen(!isMobileOpen)}
+      >
+        <Menu size={24} />
+      </button>
+
+      {/* Overlay for mobile */}
+      {isMobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
+      {/* Main Navigation */}
+      <nav
+        className={`
+          fixed top-0 left-0 h-full bg-slate-900 text-white z-40
+          transition-all duration-300 ease-in-out
+          ${isExpanded ? 'w-64' : 'w-20'}
+          ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        <div className="flex flex-col h-full">
+          {/* Logo/Header Section */}
+          <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
+            {isExpanded && !isMobileOpen && <span className="text-xl font-bold">U Tour</span>}
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="p-2 rounded-lg hover:bg-slate-800 hidden lg:block"
+            >
+              {isExpanded ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+            </button>
+          </div>
+
+          {/* Navigation Items */}
+          <div className="flex-1 py-8 px-4">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `
+                  flex items-center gap-4 px-4 py-3 rounded-lg
+                  transition-colors duration-200
+                  ${isActive ? 'bg-blue-900 text-white' : 'hover:bg-slate-800'}
+                  ${!isExpanded && 'justify-center'}
+                  mb-2
+                `}
+                onClick={() => setIsMobileOpen(false)}
+              >
+                <item.icon size={24} />
+                {isExpanded && <span>{item.label}</span>}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content Wrapper */}
+      <div
+        className={`
+          transition-all duration-300 ease-in-out
+          ${isExpanded ? 'lg:ml-64' : 'lg:ml-20'}
+        `}
+      >
+        <div className="w-full min-h-screen backdrop-blur-sm">
+          {/* Navigation Bar */}
+          <Navbar
+            userDetailsFirebase={userDetailsFirebase}
+            logoutUser={logoutUser}
+          />
+          
+          <main className="container mx-auto px-4 py-12">
+            <div className="flex flex-col md:flex-row gap-8">
+              {/* Booking Form */}
+              <div className="w-full flex flex-col gap-4 justify-start items-star">
+                <Destination
+                  from={bookingData.from}
+                  to={bookingData.to}
+                  onFromChange={(e) => handleInputChange(e)}
+                  onToChange={(e) => handleInputChange(e)}
+                  locations={locations}
+                />
+                <InputForm
+                  handleInputChange={handleInputChange}
+                  bookingData={bookingData}
+                  setBookingData={setBookingData}
+                  showAlert={showAlert}
                 />
               </div>
-              <div className="hidden md:flex flex-col justify-center items-end text-white">
-                <div className="font-black text-[1.125rem] leading-1">
-                  {userDetailsFirebase && userDetailsFirebase.displayName}
-                </div>
-                <div className="font-extrabold opacity-60 text-[0.75rem] leading-none">
-                  {userDetailsFirebase && userDetailsFirebase.email}
-                </div>
-              </div>
-              <div className="h-full w-fit flex justify-center items-center mr-[0.5rem]">
-                <button
-                  className="rounded-lg  px-3 py-1 text-sm font-semibold text-primary-white bg-transparent transition ease-in-out duration-150 hover:bg-blue-700/50 border border-blue-700 border-1 mt-2 text-white"
-                  onClick={logoutUser}
-                >
-                  Logout
-                </button>
-              </div>
+              {/* Map Section */}
+              <MapSection bookingData={bookingData} />
             </div>
-          </div>
-        </nav>
-
-        <main className="container mx-auto px-4 py-12">
-          <div className="flex flex-col md:flex-row gap-8 items-stretch">
-            {/* Form Section */}
-            <div className="w-full md:w-1/2 bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20">
-              <h2 className="text-white text-3xl font-bold mb-8">
-                Book Your Robot Tour Guide
-              </h2>
-
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-white text-sm font-medium">
-                    Tour Type
-                  </label>
-                  <div className="flex gap-4">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleInputChange({
-                          target: { name: "type", value: "single" },
-                        })
-                      }
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-                        bookingData.type === "single"
-                          ? "bg-blue-500 text-white"
-                          : "bg-white/10 text-white/70 hover:bg-white/20"
-                      }`}
-                    >
-                      <User size={18} />
-                      Single Person
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleInputChange({
-                          target: { name: "type", value: "team" },
-                        })
-                      }
-                      className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-                        bookingData.type === "team"
-                          ? "bg-blue-500 text-white"
-                          : "bg-white/10 text-white/70 hover:bg-white/20"
-                      }`}
-                    >
-                      <Users size={18} />
-                      Team
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-white text-sm font-medium">Name</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      name="name"
-                      value={bookingData.name}
-                      onChange={handleInputChange}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter your name or team name"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-white text-sm font-medium">
-                      From
-                    </label>
-                    <select
-                      name="from"
-                      value={bookingData.from}
-                      onChange={handleInputChange}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select location</option>
-                      <option value="Main Gate">Main Gate</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-white text-sm font-medium">To</label>
-                    <select
-                      name="to"
-                      value={bookingData.to}
-                      onChange={handleInputChange}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">Select destination</option>
-                      <option value="9th-block">9th Block</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-white text-sm font-medium">
-                    Departure Time
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="time"
-                      name="departureTime"
-                      value={bookingData.departureTime}
-                      onChange={handleInputChange}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <Clock
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50"
-                      size={18}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-white text-sm font-medium">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="email"
-                      name="email"
-                      value={bookingData.email}
-                      onChange={handleInputChange}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2.5 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter your email"
-                    />
-                    <Mail
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50"
-                      size={18}
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className={`w-full flex justify-center items-center bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium py-3 px-4 rounded-lg hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 ${
-                    isLoading && "opacity-70"
-                  }`}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <svg
-                      width="4rem"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 200 60"
-                    >
-                      <circle
-                        fill="currentColor"
-                        stroke="currentColor"
-                        stroke-width="15"
-                        r="15"
-                        cx="40"
-                        cy="30"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          calcMode="spline"
-                          dur="2"
-                          values="1;0;1;"
-                          keySplines=".5 0 .5 1;.5 0 .5 1"
-                          repeatCount="indefinite"
-                          begin="-.4"
-                        ></animate>
-                      </circle>
-                      <circle
-                        fill="currentColor"
-                        stroke="currentColor"
-                        stroke-width="15"
-                        r="15"
-                        cx="100"
-                        cy="30"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          calcMode="spline"
-                          dur="2"
-                          values="1;0;1;"
-                          keySplines=".5 0 .5 1;.5 0 .5 1"
-                          repeatCount="indefinite"
-                          begin="-.2"
-                        ></animate>
-                      </circle>
-                      <circle
-                        fill="currentColor"
-                        stroke="currentColor"
-                        stroke-width="15"
-                        r="15"
-                        cx="160"
-                        cy="30"
-                      >
-                        <animate
-                          attributeName="opacity"
-                          calcMode="spline"
-                          dur="2"
-                          values="1;0;1;"
-                          keySplines=".5 0 .5 1;.5 0 .5 1"
-                          repeatCount="indefinite"
-                          begin="0"
-                        ></animate>
-                      </circle>
-                    </svg>
-                  ) : (
-                    "Book Robot Guide"
-                  )}
-                </button>
-              </form>
-            </div>
-
-            {/* Map Section */}
-            <div className="w-full md:w-1/2 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 overflow-hidden">
-              <div className="w-full h-full min-h-[600px] bg-slate-800 relative">
-                {/* <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-white/50 flex flex-col items-center gap-4">
-                    <MapPin size={48} />
-                    <p className="text-lg">Map Component Goes Here</p>
-                  </div>
-                </div> */}
-                <iframe
-                  src="https://www.google.com/maps/embed/v1/directions?origin=UPES+Hubble&destination=UPES+Cricket+Ground&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8"
-                  style={{ border: "0", width: "100%", height: "100%" }}
-                  allowfullscreen=""
-                  loading="lazy"
-                  referrerpolicy="no-referrer-when-downgrade"
-                ></iframe>
-              </div>
-            </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );
 };
 
-export default Home;
+export default Dashboard;
