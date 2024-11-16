@@ -31,7 +31,7 @@ async function migrateToFirebase(email, firebaseUid) {
   });
 
   if (!existingUser) {
-    return null;
+    return { migrated: false, firebaseUid };
   }
 
   // Begin migration transaction
@@ -82,7 +82,7 @@ async function migrateToFirebase(email, firebaseUid) {
     });
   });
 
-  return firebaseUid;
+  return { migrated: true, firebaseUid };
 }
 
 module.exports = {

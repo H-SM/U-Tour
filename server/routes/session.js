@@ -4,6 +4,10 @@ const admin = require("firebase-admin");
 const router = express.Router();
 const { handleUserCreation } = require("./../utils/userManager");
 const { generateCustomId } = require("./../utils/idGenerator");
+const { htmlTemplate } = require("./../templates/template");
+const sgMail = require("@sendgrid/mail");
+
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const prisma = new PrismaClient();
 
@@ -116,6 +120,86 @@ router.post("/create", async (req, res) => {
         ...(!isBookedByFirebaseUser || !isUserFirebaseUser),
       },
     });
+
+    // Send confirmation emails
+    try {
+      // Prepare common email data
+      const emailData = {
+        To: to,
+        From: from,
+        Time: new Date(departureTime).toLocaleString(),
+        TourType: tourType,
+      };
+
+      if (bookingUserEmail === userEmail) {
+        // If booking user is the same as tour user, send only one email
+        const combinedMsg = {
+          personalizations: [{
+            to: [{ email: userEmail }],
+            substitutions: {
+              ...emailData,
+              Name: userName,
+              Email: userEmail,
+              Role: "Self Booking",  // Indicate it's a self-booking
+              AdditionalInfo: team
+                ? `Team ${team.name} booking for ${team.size} people.`
+                : "Individual booking",
+            },
+          }],
+          from: process.env.SENDGRID_SENDER,
+          subject: "U Robot Tour Guide Booking Confirmation",
+          html: htmlTemplate,
+        };
+
+        await sgMail.send(combinedMsg);
+      } else {
+        // If different users, send separate emails
+        const bookingUserMsg = {
+          personalizations: [{
+            to: [{ email: bookingUserEmail }],
+            substitutions: {
+              ...emailData,
+              Name: userName,
+              Email: bookingUserEmail,
+              Role: "Booking User",
+              AdditionalInfo: team
+                ? `Team ${team.name} booking for ${team.size} people.`
+                : "Individual booking",
+            },
+          }],
+          from: process.env.SENDGRID_SENDER,
+          subject: "U Robot Tour Guide Booking Confirmation",
+          html: htmlTemplate,
+        };
+
+        const sessionUserMsg = {
+          personalizations: [{
+            to: [{ email: userEmail }],
+            substitutions: {
+              ...emailData,
+              Name: userName,
+              Email: userEmail,
+              Role: "Tour Participant",
+              AdditionalInfo: team
+                ? `Part of team: ${team.name}. Team booking for ${team.size} people.`
+                : "Individual booking",
+            },
+          }],
+          from: process.env.SENDGRID_SENDER,
+          subject: "U Robot Tour Guide Booking Confirmation",
+          html: htmlTemplate,
+        };
+
+        await Promise.all([
+          sgMail.send(bookingUserMsg),
+          sgMail.send(sessionUserMsg),
+        ]);
+      }
+
+      console.log("Confirmation emails sent successfully!");
+    } catch (emailError) {
+      console.error("Error sending confirmation emails:", emailError);
+    }
 
     res.status(201).json(session);
   } catch (error) {

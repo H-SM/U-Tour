@@ -28,6 +28,9 @@ const InputForm = ({
   const emailSearchRef = useRef(null);
   const [useLoggedInUser, setUseLoggedInUser] = useState(false);
 
+  // Get today's date in YYYY-MM-DD format for min date attribute
+  const today = new Date().toISOString().split("T")[0];
+
   useEffect(() => {
     if (useLoggedInUser && userDetailsFirebase) {
       setBookingData((prev) => ({
@@ -154,10 +157,11 @@ const InputForm = ({
       "from",
       "to",
       "departureTime",
+      "departureDate",
       "type",
     ];
     if (bookingData.type === "team") {
-      requiredFields.push("teamSize");
+      requiredFields.push("teamSize", "teamName");
     }
 
     // Check only the required fields
@@ -173,10 +177,9 @@ const InputForm = ({
 
     setIsLoading(true);
     try {
-      // Convert time string to full ISO date string
-      const today = new Date();
+      // Convert time string to full ISO date string using the selected date
       const [hours, minutes] = bookingData.departureTime.split(":");
-      const departureDate = new Date(today);
+      const departureDate = new Date(bookingData.departureDate);
       departureDate.setHours(parseInt(hours, 10));
       departureDate.setMinutes(parseInt(minutes, 10));
       departureDate.setSeconds(0);
@@ -193,7 +196,7 @@ const InputForm = ({
         team:
           bookingData.type === "team"
             ? {
-                name: bookingData.name,
+                name: bookingData.teamName, 
                 size: parseInt(bookingData.teamSize),
                 notes: bookingData.teamNotes,
                 contactId: selectedUser?.uid || userDetailsFirebase.uid,
@@ -227,8 +230,10 @@ const InputForm = ({
         from: "",
         to: "",
         departureTime: "",
+        departureDate: today,
         email: "",
         teamSize: 1,
+        teamName: "",
         teamNotes: "",
       });
       setSelectedUser(null);
@@ -304,7 +309,7 @@ const InputForm = ({
               onChange={handleUserSearch}
               value={bookingData.name}
               onKeyDown={handleKeyDown}
-              autocomplete="off"
+              autoComplete="off"
               disabled={useLoggedInUser}
             />
             {bookingData.name && !useLoggedInUser && (
@@ -342,7 +347,7 @@ const InputForm = ({
               value={bookingData.email}
               onChange={handleUserSearch}
               onKeyDown={handleKeyDown}
-              autocomplete="off"
+              autoComplete="off"
               disabled={useLoggedInUser}
             />
             {bookingData.email && !useLoggedInUser && (
@@ -371,18 +376,34 @@ const InputForm = ({
         {/* Team Details (conditional) */}
         {bookingData.type === "team" && (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-white text-sm font-medium">
-                Team Size
-              </label>
-              <input
-                type="number"
-                name="teamSize"
-                value={bookingData.teamSize}
-                onChange={handleInputChange}
-                min="2"
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              />
+            {/* Team Name Input */}
+            <div className="flex justify-between items-start gap-2">
+              <div className="space-y-2 w-full">
+                <label className="text-white text-sm font-medium">
+                  Team Name
+                </label>
+                <input
+                  type="text"
+                  name="teamName"
+                  value={bookingData.teamName}
+                  onChange={handleInputChange}
+                  placeholder="Enter team name"
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
+              <div className="space-y-2 w-fit">
+                <label className="text-white text-sm font-medium">
+                  Team Size
+                </label>
+                <input
+                  type="number"
+                  name="teamSize"
+                  value={bookingData.teamSize}
+                  onChange={handleInputChange}
+                  min="2"
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-white text-sm font-medium">
@@ -399,18 +420,33 @@ const InputForm = ({
           </div>
         )}
 
-        {/* Time Selection */}
-        <div className="space-y-2">
-          <label className="text-white text-sm font-medium">
-            Departure Time
-          </label>
-          <input
-            type="time"
-            name="departureTime"
-            value={bookingData.departureTime}
-            onChange={handleInputChange}
-            className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-          />
+        {/* Date and Time Selection */}
+        <div className="flex justify-between items-start gap-2">
+          <div className="space-y-2 w-1/2">
+            <label className="text-white text-sm font-medium">
+              Departure Date
+            </label>
+            <input
+              type="date"
+              name="departureDate"
+              value={bookingData.departureDate}
+              onChange={handleInputChange}
+              min={today}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+            />
+          </div>
+          <div className="space-y-2 w-1/2">
+            <label className="text-white text-sm font-medium">
+              Departure Time
+            </label>
+            <input
+              type="time"
+              name="departureTime"
+              value={bookingData.departureTime}
+              onChange={handleInputChange}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
+            />
+          </div>
         </div>
 
         {/* Submit Button */}

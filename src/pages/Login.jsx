@@ -19,6 +19,29 @@ const Login = ({ showAlert }) => {
   const [signup, setSignup] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const migrateUser = async (email, firebaseUid) => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/users/migrate-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, firebaseUid }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Migration failed');
+      }
+
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('User migration failed:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -28,7 +51,17 @@ const Login = ({ showAlert }) => {
         if (credentials.password !== credentials.cpassword) {
           throw new Error("Passwords don't match");
         }
-        await signUp(credentials.email, credentials.password, credentials.name);
+        // Sign up the user with Firebase
+        const userCredential = await signUp(credentials.email, credentials.password, credentials.name);
+        console.log(userCredential);
+        // After successful signup, attempt to migrate user data
+        try {
+          const res = await migrateUser(credentials.email, userCredential.uid);
+          console.log("Migration result:", res);
+        } catch (migrationError) {
+          // Still continue with signup even if migration fails
+          console.error("Migration failed:", migrationError);
+        }
         showAlert("Welcome to U Robot!", "success");
         navigate("/");
       } else {
@@ -46,7 +79,9 @@ const Login = ({ showAlert }) => {
 
   const handleGoogleSignIn = async () => {
     try {
-      await signInWithGoogle();
+      const result = await signInWithGoogle();
+      console.log("Google sign-in result:", result);
+      await migrateUser(result.email, result.uid);
       showAlert("Welcome to U Robot!", "success");
       navigate("/");
     } catch (error) {
@@ -57,7 +92,8 @@ const Login = ({ showAlert }) => {
 
   const handleGithubSignIn = async () => {
     try {
-      await signInWithGithub();
+      const result = await signInWithGithub();
+      await migrateUser(result.email, result.uid);
       showAlert("Welcome to U Robot!", "success");
       navigate("/");
     } catch (error) {

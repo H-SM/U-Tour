@@ -74,12 +74,13 @@ router.post("/migrate-user", async (req, res) => {
     const { email, firebaseUid } = req.body;
 
     const result = await migrateToFirebase(email, firebaseUid);
-
-    if (!result) {
-      return res.status(404).json({ error: "No user found to migrate" });
-    }
-
-    res.json({ success: true, firebaseUid: result });
+    
+    // Always return success, but indicate if migration occurred
+    res.json({
+      success: true,
+      migrated: result.migrated,
+      firebaseUid: result.firebaseUid
+    });
   } catch (error) {
     console.error("Error migrating user:", error);
     res.status(500).json({ error: "Failed to migrate user" });
@@ -90,25 +91,19 @@ router.post("/migrate-user", async (req, res) => {
 router.post("/search", async (req, res) => {
   try {
     const { query } = req.body;
-
     if (!query || query.length < 3) {
       return res.status(400).json({
         error: "Search query must be at least 3 characters long",
       });
     }
 
-    // Initialize an array to store matching users
+    // Initialize arrays to store matching users
     const matchingUsers = [];
 
-    // Get all users (Firebase Admin SDK doesn't support direct searching)
-    // Use listUsers to paginate through all users
-    let usersResult = await admin.auth().listUsers(1000);
-
-    // Filter users based on the search query
+    // 1. Get Firebase users
+    const usersResult = await admin.auth().listUsers(1000);
     usersResult.users.forEach((userRecord) => {
       const { displayName, email, photoURL, uid } = userRecord;
-
-      // Check if display name or email matches the search query (case-insensitive)
       if (
         (displayName &&
           displayName.toLowerCase().includes(query.toLowerCase())) ||
@@ -119,8 +114,51 @@ router.post("/search", async (req, res) => {
           email,
           photoURL,
           uid,
+          isFirebaseUser: true
         });
       }
+    });
+
+    // 2. Get non-Firebase users from Prisma
+    const nonFirebaseUsers = await prisma.user.findMany({
+      where: {
+        AND: [
+          {
+            migratedToFirebase: false,
+          },
+          {
+            OR: [
+              {
+                displayName: {
+                  contains: query,
+                  mode: 'insensitive'
+                }
+              },
+              {
+                email: {
+                  contains: query,
+                  mode: 'insensitive'
+                }
+              }
+            ]
+          }
+        ]
+      },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+      }
+    });
+
+    // Add non-Firebase users to the results
+    nonFirebaseUsers.forEach((user) => {
+      matchingUsers.push({
+        displayName: user.displayName,
+        email: user.email,
+        uid: user.id,
+        isFirebaseUser: false
+      });
     });
 
     // Handle pagination
@@ -128,7 +166,6 @@ router.post("/search", async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
-
     const paginatedUsers = matchingUsers.slice(startIndex, endIndex);
 
     res.json({
@@ -144,6 +181,8 @@ router.post("/search", async (req, res) => {
   } catch (error) {
     console.error("Error searching users:", error);
     res.status(500).json({ error: "Failed to search users" });
+  } finally {
+    await prisma.$disconnect();
   }
 });
 
