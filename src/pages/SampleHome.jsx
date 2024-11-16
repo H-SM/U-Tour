@@ -51,11 +51,11 @@ const SampleHome = ({ showAlert }) => {
       try {
         const user = await checkAuth();
         if (user) {
-          setBookingData((prev) => ({
-            ...prev,
-            name: user.displayName,
-            email: user.email,
-          }));
+          // setBookingData((prev) => ({
+          //   ...prev,
+          //   name: user.displayName,
+          //   email: user.email,
+          // }));
         } else {
           navigate("/login");
         }

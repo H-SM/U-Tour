@@ -1,7 +1,14 @@
-import React, { useContext, useState } from "react";
+import React, {
+  useContext,
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import ContextValue from "./../../context/EventContext";
 import { MapPin, Clock, Mail, Users, User, Search, X } from "lucide-react";
 import SearchUser from "./SearchUser";
+import debounce from "lodash/debounce";
 
 const InputForm = ({
   handleInputChange,
@@ -9,53 +16,179 @@ const InputForm = ({
   setBookingData,
   showAlert,
 }) => {
-  const { userDetailsFirebase } =
-    useContext(ContextValue);
+  const { userDetailsFirebase } = useContext(ContextValue);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearchField, setActiveSearchField] = useState(null);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const nameSearchRef = useRef(null);
+  const emailSearchRef = useRef(null);
+  const [useLoggedInUser, setUseLoggedInUser] = useState(false);
 
-  const handleUserSearch = async (query) => {
-    setBookingData((prev) => ({ ...prev, name: query }));
-    try {
-      const results = [
-        { uid: "1", displayName: "Test User", email: "test@example.com" },
-      ];
-      setSearchResults(results);
-    } catch (error) {
-      console.error("Error searching users:", error);
-      showAlert("Error searching users", "error");
+  useEffect(() => {
+    if (useLoggedInUser && userDetailsFirebase) {
+      setBookingData((prev) => ({
+        ...prev,
+        name: userDetailsFirebase.displayName || "",
+        email: userDetailsFirebase.email || "",
+      }));
+      setSelectedUser(userDetailsFirebase);
+    }
+  }, [useLoggedInUser, userDetailsFirebase]);
+
+  // Click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        activeSearchField &&
+        nameSearchRef.current &&
+        emailSearchRef.current &&
+        !nameSearchRef.current.contains(event.target) &&
+        !emailSearchRef.current.contains(event.target)
+      ) {
+        setActiveSearchField(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [activeSearchField]);
+
+  const handleKeyDown = (event) => {
+    if (!searchResults.length || !activeSearchField) return;
+
+    if (event.key === "Enter" || event.key === "Tab") {
+      setActiveSearchField(null);
+    }
+  };
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce(async (query) => {
+      if (!query || query.length < 3) {
+        setSearchResults([]);
+        return;
+      }
+      setLoadingSearch(true);
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL}/users/search`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ query }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Search request failed");
+        }
+
+        const data = await response.json();
+        setSearchResults(data.users);
+        setIsSearchOpen(true);
+      } catch (error) {
+        console.error("Error searching users:", error);
+        showAlert("Error searching users", "error");
+      } finally {
+        setLoadingSearch(false);
+      }
+    }, 400),
+    []
+  );
+
+  const handleUserSearch = (event) => {
+    const { value, name } = event.target;
+
+    setBookingData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    setSearchQuery(value);
+    setActiveSearchField(name);
+    if (name === "name" || name === "email") {
+      setSearchQuery(value);
+
+      if (value.length >= 3) {
+        debouncedSearch(value);
+      } else {
+        setSearchResults([]);
+      }
     }
   };
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
+    setSearchQuery(""); // Clear search query
     setBookingData((prev) => ({
       ...prev,
       name: user.displayName,
       email: user.email,
     }));
     setIsSearchOpen(false);
+    setActiveSearchField(null);
+  };
+
+  const clearSelection = (field) => {
+    setSelectedUser(null);
+    setBookingData((prev) => ({
+      ...prev,
+      [field]: "",
+    }));
+    setActiveSearchField(null);
   };
 
   const createSession = async () => {
-    if (Object.values(bookingData).some((value) => value === "")) {
-      showAlert("Please fill in all required fields.", "warning");
+    console.log("Creating session...", bookingData);
+    // Define required fields based on tour type
+    const requiredFields = [
+      "name",
+      "email",
+      "from",
+      "to",
+      "departureTime",
+      "type",
+    ];
+    if (bookingData.type === "team") {
+      requiredFields.push("teamSize");
+    }
+
+    // Check only the required fields
+    const missingFields = requiredFields.filter((field) => !bookingData[field]);
+
+    if (missingFields.length > 0) {
+      showAlert(
+        `Please fill in all required fields: ${missingFields.join(", ")}`,
+        "warning"
+      );
       return;
     }
 
     setIsLoading(true);
     try {
+      // Convert time string to full ISO date string
+      const today = new Date();
+      const [hours, minutes] = bookingData.departureTime.split(":");
+      const departureDate = new Date(today);
+      departureDate.setHours(parseInt(hours, 10));
+      departureDate.setMinutes(parseInt(minutes, 10));
+      departureDate.setSeconds(0);
+      departureDate.setMilliseconds(0);
+
       const sessionData = {
         bookingUserId: userDetailsFirebase.uid,
-        userId: selectedUser?.uid || userDetailsFirebase.uid,
-        isBookedByFirebaseUser: true,
-        isUserFirebaseUser: true,
-        state: "QUEUED",
+        userEmail: bookingData.email,
+        userName: bookingData.name,
         to: bookingData.to,
         from: bookingData.from,
-        departureTime: new Date(bookingData.departureTime).toISOString(),
+        departureTime: departureDate.toISOString(),
         tourType: bookingData.type,
         team:
           bookingData.type === "team"
@@ -69,7 +202,23 @@ const InputForm = ({
             : null,
       };
 
-      console.log("Creating session:", sessionData);
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/sessions/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(sessionData),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create session");
+      }
+
+      const result = await response.json();
+      console.log("Session created:", result);
       showAlert("Session created successfully!", "success");
 
       setBookingData({
@@ -83,6 +232,7 @@ const InputForm = ({
         teamNotes: "",
       });
       setSelectedUser(null);
+      setUseLoggedInUser(false);
     } catch (error) {
       console.error("Error creating session:", error);
       showAlert("Failed to create session. Please try again.", "error");
@@ -92,7 +242,7 @@ const InputForm = ({
   };
 
   return (
-    <div className="w-full  bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20">
+    <div className="w-full bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20">
       <div className="space-y-6">
         {/* Tour Type Selection */}
         <div className="space-y-2">
@@ -101,9 +251,7 @@ const InputForm = ({
             <button
               type="button"
               onClick={() =>
-                handleInputChange({
-                  target: { name: "type", value: "single" },
-                })
+                handleInputChange({ target: { name: "type", value: "single" } })
               }
               className={`flex items-center gap-2 px-4 py-2 rounded-full ${
                 bookingData.type === "single"
@@ -117,9 +265,7 @@ const InputForm = ({
             <button
               type="button"
               onClick={() =>
-                handleInputChange({
-                  target: { name: "type", value: "team" },
-                })
+                handleInputChange({ target: { name: "type", value: "team" } })
               }
               className={`flex items-center gap-2 px-4 py-2 rounded-full ${
                 bookingData.type === "team"
@@ -133,22 +279,38 @@ const InputForm = ({
           </div>
         </div>
 
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="useLoggedInUser"
+            checked={useLoggedInUser}
+            onChange={(e) => setUseLoggedInUser(e.target.checked)}
+            className="w-4 h-4 rounded border-white/20 bg-white/10 text-blue-500 focus:ring-blue-500"
+          />
+          <label htmlFor="useLoggedInUser" className="text-white text-sm">
+            Same as logged in user
+          </label>
+        </div>
+
         {/* User Name */}
-        <div className="space-y-2 relative">
+        <div className="space-y-2 relative" ref={nameSearchRef}>
           <label className="text-white text-sm font-medium">Name</label>
           <div className="relative">
             <input
               type="text"
+              name="name"
               placeholder="Search users..."
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              onChange={(e) => handleUserSearch(e.target.value)}
-              onFocus={() => setIsSearchOpen(true)}
-              value={selectedUser ? selectedUser.displayName : ""}
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white disabled:opacity-60"
+              onChange={handleUserSearch}
+              value={bookingData.name}
+              onKeyDown={handleKeyDown}
+              autocomplete="off"
+              disabled={useLoggedInUser}
             />
-            {selectedUser && (
+            {bookingData.name && !useLoggedInUser && (
               <button
                 className="absolute right-2 top-1/2 -translate-y-1/2"
-                onClick={() => setSelectedUser(null)}
+                onClick={() => clearSelection("name")}
               >
                 <X
                   size={18}
@@ -157,30 +319,36 @@ const InputForm = ({
               </button>
             )}
           </div>
-          <SearchUser
-            isOpen={isSearchOpen}
-            onClose={() => setIsSearchOpen(false)}
-            searchResults={searchResults}
-            onSelect={handleUserSelect}
-          />
+          {activeSearchField === "name" && (
+            <SearchUser
+              isOpen={true}
+              onClose={() => setActiveSearchField(null)}
+              searchResults={searchResults}
+              onSelect={handleUserSelect}
+              isLoading={loadingSearch}
+            />
+          )}
         </div>
 
         {/* User Email */}
-        <div className="space-y-2 relative">
+        <div className="space-y-2 relative" ref={emailSearchRef}>
           <label className="text-white text-sm font-medium">Email</label>
           <div className="relative">
             <input
               type="email"
-              placeholder="Search users..."
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-              onChange={(e) => handleUserSearch(e.target.value)}
-              onFocus={() => setIsSearchOpen(true)}
-              value={selectedUser ? selectedUser.displayName : ""}
+              name="email"
+              placeholder="Email address"
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white disabled:opacity-60"
+              value={bookingData.email}
+              onChange={handleUserSearch}
+              onKeyDown={handleKeyDown}
+              autocomplete="off"
+              disabled={useLoggedInUser}
             />
-            {selectedUser && (
+            {bookingData.email && !useLoggedInUser && (
               <button
                 className="absolute right-2 top-1/2 -translate-y-1/2"
-                onClick={() => setSelectedUser(null)}
+                onClick={() => clearSelection("email")}
               >
                 <X
                   size={18}
@@ -188,13 +356,16 @@ const InputForm = ({
                 />
               </button>
             )}
+            {activeSearchField === "email" && (
+              <SearchUser
+                isOpen={true}
+                onClose={() => setActiveSearchField(null)}
+                searchResults={searchResults}
+                onSelect={handleUserSelect}
+                isLoading={loadingSearch}
+              />
+            )}
           </div>
-          <SearchUser
-            isOpen={isSearchOpen}
-            onClose={() => setIsSearchOpen(false)}
-            searchResults={searchResults}
-            onSelect={handleUserSelect}
-          />
         </div>
 
         {/* Team Details (conditional) */}
