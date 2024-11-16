@@ -1,6 +1,7 @@
 import React from "react";
 
 const MapSection = ({ bookingData }) => {
+
   return (
     <div className="w-full md:w-1/2 bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 overflow-hidden">
       <div className="w-full h-full min-h-[500px]">

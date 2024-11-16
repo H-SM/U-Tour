@@ -26,7 +26,7 @@ const SampleHome = ({ showAlert }) => {
   });
 
   const locations = [
-    { value: "main-gate", label: "Main Gate" },
+    { value: "Bidholi-magic-stand", label: "Main Gate" },
     { value: "hubble", label: "The Hubble" },
     { value: "aditya-block", label: "Aditya Block" },
     { value: "upes-cricket-ground", label: "Cricket Ground" },
