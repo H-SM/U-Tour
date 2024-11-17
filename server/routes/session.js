@@ -11,6 +11,14 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const prisma = new PrismaClient();
 
+const formatLocation = (location) => {
+  return location
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+
 // Route to create a new session
 router.post("/create", async (req, res) => {
   try {
@@ -125,8 +133,8 @@ router.post("/create", async (req, res) => {
     try {
       // Prepare common email data
       const emailData = {
-        To: to,
-        From: from,
+        To: formatLocation(to),
+        From: formatLocation(from),
         Time: new Date(departureTime).toLocaleString(),
         TourType: tourType,
       };
@@ -238,6 +246,9 @@ router.get("/:sessionId", async (req, res) => {
 
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
+      include: {
+        team: true // Include team details if they exist
+      }
     });
 
     if (!session) return res.status(404).json({ error: "Session not found" });
@@ -323,88 +334,5 @@ router.get("/stats", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch session statistics" });
   }
 });
-
-// Get detailed information for a single session TODO: NEED FIX - kinda irrelevant due to the old existing route
-router.get("/:sessionId/details", async (req, res) => {
-  try {
-    const { sessionId } = req.params;
-
-    // Get session with user information
-    const session = await prisma.session.findUnique({
-      where: { id: sessionId },
-      select: {
-        id: true,
-        state: true,
-        to: true,
-        from: true,
-        departureTime: true,
-        tourType: true,
-        createdAt: true,
-        expiredAt: true,
-        userId: true,
-      },
-    });
-
-    if (!session) {
-      return res.status(404).json({ error: "Session not found" });
-    }
-
-    // Get user information from Firebase
-    const userRecord = await admin.auth().getUser(session.userId);
-
-    // Get session history (assuming you have a sessionHistory table)
-    const sessionHistory = await prisma.sessionHistory.findMany({
-      where: { sessionId },
-      orderBy: { createdAt: "desc" },
-      select: {
-        state: true,
-        createdAt: true,
-        note: true,
-      },
-    });
-
-    // Calculate session duration if applicable
-    const sessionDuration =
-      session.state === "DONE"
-        ? calculateSessionDuration(session.createdAt, session.updatedAt)
-        : null;
-
-    const response = {
-      session: {
-        ...session,
-        duration: sessionDuration,
-      },
-      user: {
-        displayName: userRecord.displayName,
-        email: userRecord.email,
-        photoURL: userRecord.photoURL,
-        uid: userRecord.uid,
-      },
-      history: sessionHistory,
-      _meta: {
-        retrievedAt: new Date(),
-      },
-    };
-
-    res.json(response);
-  } catch (error) {
-    console.error("Error fetching session details:", error);
-    res.status(500).json({ error: "Failed to fetch session details" });
-  }
-});
-
-// Helper function to calculate session duration
-function calculateSessionDuration(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const durationMs = end - start;
-
-  return {
-    milliseconds: durationMs,
-    seconds: Math.floor(durationMs / 1000),
-    minutes: Math.floor(durationMs / (1000 * 60)),
-    hours: Math.floor(durationMs / (1000 * 60 * 60)),
-  };
-}
 
 module.exports = router;

@@ -2,7 +2,7 @@ import React from 'react'
 
 const Loader = () => {
     return (
-        <div className="h-full w-full flex justify-center items-center text-text-inactive">
+        <div className="h-full w-full flex justify-center items-center text-white/80">
             <svg className='w-[10rem]' viewBox="0 0 200 60">
                 <rect fill="currentColor" x="0" y="0" width="10" height="60" rx="6">
                     <animate attributeType="CSS"

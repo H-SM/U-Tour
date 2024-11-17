@@ -130,12 +130,12 @@ const Login = ({ showAlert }) => {
                 className="font-black textbackground text-transparent text-[4rem] bg-gradient-to-r from-border-gradient-left to-border-gradient-right bg-clip-text"
                 style={{
                   textShadow: `
-      0 0 20px rgba(255, 255, 255, 0.1),
+      0 0 20px rgba(255, 255, 255, 0.05),
       0 0 30px rgba(255, 255, 255, 0.1)
     `,
                 }}
               >
-                U ROBOT
+                U TOUR
               </div>
             </div>
             <div className="flex flex-col justify-center items-center w-fit h-fit p-[2px] bg-gradient-to-r from-border-gradient-left to-border-gradient-right rounded-[1.2rem] gap-[2px] shadow-2xl shadow-border-gradient-left/20">
