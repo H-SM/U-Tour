@@ -8,19 +8,41 @@ const { migrateToFirebase } = require("./../utils/userManager");
 router.get("/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
+    let userData;
 
-    // Retrieve the user information from Firebase Authentication
-    const userRecord = await admin.auth().getUser(userId);
+    try {
+      // First attempt to get user from Firebase
+      const userRecord = await admin.auth().getUser(userId);
+      userData = {
+        displayName: userRecord.displayName,
+        email: userRecord.email,
+        photoURL: userRecord.photoURL,
+        uid: userRecord.uid,
+        isFirebaseUser: true
+      };
+    } catch (firebaseError) {
+      // If Firebase lookup fails, try Prisma User table
+      const prismaUser = await prisma.user.findUnique({
+        where: {
+          id: userId
+        }
+      });
 
-    // Extract the relevant user data
-    const { displayName, email, photoURL, uid } = userRecord;
+      if (!prismaUser) {
+        return res.status(404).json({ error: "User not found in either Firebase or database" });
+      }
 
-    res.json({
-      displayName,
-      email,
-      photoURL,
-      uid,
-    });
+      userData = {
+        displayName: prismaUser.displayName,
+        email: prismaUser.email,
+        photoURL: null, // Since your User model doesn't have photoURL
+        uid: prismaUser.id,
+        isFirebaseUser: false
+      };
+    }
+
+    res.json(userData);
+    
   } catch (error) {
     console.error("Error fetching user data:", error);
     res.status(500).json({ error: "Failed to fetch user data" });

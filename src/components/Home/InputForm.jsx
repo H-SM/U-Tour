@@ -9,6 +9,7 @@ import ContextValue from "./../../context/EventContext";
 import { MapPin, Clock, Mail, Users, User, Search, X } from "lucide-react";
 import SearchUser from "./SearchUser";
 import debounce from "lodash/debounce";
+import { useNavigate } from "react-router-dom";
 
 const InputForm = ({
   handleInputChange,
@@ -27,7 +28,7 @@ const InputForm = ({
   const nameSearchRef = useRef(null);
   const emailSearchRef = useRef(null);
   const [useLoggedInUser, setUseLoggedInUser] = useState(false);
-
+  const navigate = useNavigate();
   // Get today's date in YYYY-MM-DD format for min date attribute
   const today = new Date().toISOString().split("T")[0];
 
@@ -196,7 +197,7 @@ const InputForm = ({
         team:
           bookingData.type === "team"
             ? {
-                name: bookingData.teamName, 
+                name: bookingData.teamName,
                 size: parseInt(bookingData.teamSize),
                 notes: bookingData.teamNotes,
                 contactId: selectedUser?.uid || userDetailsFirebase.uid,
@@ -238,6 +239,7 @@ const InputForm = ({
       });
       setSelectedUser(null);
       setUseLoggedInUser(false);
+      navigate(`/sessions/${result.id}`);
     } catch (error) {
       console.error("Error creating session:", error);
       showAlert("Failed to create session. Please try again.", "error");
