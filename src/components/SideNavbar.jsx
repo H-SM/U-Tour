@@ -14,7 +14,7 @@ const SideNavbar = ({ isExpanded, setIsExpanded }) => {
 
   const navItems = [
     { path: "/", icon: Home, label: "Dashboard" },
-    { path: "/settings", icon: Settings, label: "Settings" },
+    { path: "/setting", icon: Settings, label: "Settings" },
     { path: "/sessions", icon: Calendar, label: "Sessions" },
   ];
 

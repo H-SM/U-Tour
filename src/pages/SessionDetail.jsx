@@ -6,7 +6,7 @@ import Navbar from "../components/Navbar";
 import ContextValue from "../context/EventContext";
 import useFirebaseAuth from "../hooks/useFirebaseAuth";
 import Loader from "../components/Loader";
-import { User } from "lucide-react";
+import { Check, Share2, User } from "lucide-react";
 import Modal from "../components/Modal";
 
 const SessionDetail = ({ isExpanded, setIsExpanded }) => {
@@ -17,15 +17,21 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
   const { userDetailsFirebase, setUserDetailsFirebase } =
     useContext(ContextValue);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
+  const [showCopied, setShowCopied] = useState(false);
   const [participant, setParticipant] = useState(null);
   const [booker, setBooker] = useState(null);
   const { checkAuth, signOutUser } = useFirebaseAuth();
-  const { navigate } = useNavigate();
+  const navigate = useNavigate();
   const logoutUser = () => {
     signOutUser();
     setUserDetailsFirebase(null);
     navigate("/login");
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setShowCopied(true);
+    setTimeout(() => setShowCopied(false), 2000);
   };
 
   useEffect(() => {
@@ -33,7 +39,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
       try {
         const user = await checkAuth();
         if (!user) {
-          navigate("/login");
+        //   navigate("/login");
         }
       } catch (error) {
         console.error("Authentication error:", error);
@@ -459,15 +465,31 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                     )}
 
                     {/* Action Buttons */}
-                    <div
-                      className="flex space-x-3 mt-6"
-                      onClick={() => setIsModalOpen(true)}
-                    >
-                      {session.state === "QUEUED" && (
-                        <button className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex-1">
+                    <div className="flex space-x-3 mt-6">
+                      {session.state === "QUEUED" && userDetailsFirebase && (userDetailsFirebase.uid === session.bookingUserId || userDetailsFirebase.uid === session.bookingUserId) && (
+                        <button
+                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex-1"
+                          onClick={() => setIsModalOpen(true)}
+                        >
                           Cancel Session
                         </button>
                       )}
+                      <button
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 flex-1"
+                        onClick={handleShare}
+                      >
+                        {showCopied ? (
+                          <>
+                            <Check size={16} />
+                            <span>Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Share2 size={16} />
+                            <span>Share</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>

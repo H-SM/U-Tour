@@ -7,6 +7,7 @@ import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Sessions from "./pages/Sessions";
 import SessionDetail from "./pages/SessionDetail";
+import Setting from "./pages/Setting";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -52,6 +53,7 @@ function App() {
             }
           />
           <Route path="/sessions/:sessionId" element={<SessionDetail isExpanded={isExpanded} setIsExpanded={setIsExpanded} />} />
+          <Route path="/setting" element={<Setting isExpanded={isExpanded} setIsExpanded={setIsExpanded} showAlert={showAlert} />} />
           {/* <Route path="*" element={<NotFound />} /> */}
         </Routes>
       </Router>
