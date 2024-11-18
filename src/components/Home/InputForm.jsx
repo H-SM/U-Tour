@@ -267,7 +267,7 @@ const InputForm = ({
               }`}
             >
               <User size={18} />
-              Single Person
+              Individual
             </button>
             <button
               type="button"

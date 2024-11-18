@@ -97,7 +97,7 @@ const SessionCard = ({ session }) => {
       )}
       <div className="flex justify-between items-start mb-4">
         <div className="flex flex-col justify-start items-start">
-          <h3 className="text-xl font-semibold mb-2 text-white">
+          <h3 className="text-xl font-semibold mb-2 text-white text-left">
             {formatDate(session.departureTime)}
           </h3>
           <div
@@ -109,7 +109,7 @@ const SessionCard = ({ session }) => {
             {session.state}
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right hidden sm:flex flex-col">
           <p className="text-sm text-gray-300">Session ID</p>
           <p className="font-mono text-sm text-white">
             {session.id.slice(0, 8)}

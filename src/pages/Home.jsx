@@ -77,7 +77,7 @@ const Dashboard = ({ showAlert, isExpanded, setIsExpanded }) => {
             logoutUser={logoutUser}
           />
 
-          <main className="container mx-auto px-4 py-12">
+          <main className="container mx-auto px-4 py-12 pb-[6rem]">
             <div className="flex flex-col md:flex-row gap-8">
               {/* Booking Form */}
               <div className="w-full flex flex-col gap-4 justify-start items-star">
@@ -88,6 +88,9 @@ const Dashboard = ({ showAlert, isExpanded, setIsExpanded }) => {
                   onToChange={(e) => handleInputChange(e)}
                   locations={locations}
                 />
+                <div className="flex xl:hidden w-full md:w-full">
+                  <MapSection bookingData={bookingData} />
+                </div>
                 <InputForm
                   handleInputChange={handleInputChange}
                   bookingData={bookingData}
@@ -96,7 +99,9 @@ const Dashboard = ({ showAlert, isExpanded, setIsExpanded }) => {
                 />
               </div>
               {/* Map Section */}
-              <MapSection bookingData={bookingData} />
+              <div className="hidden xl:flex w-full md:w-full">
+                <MapSection bookingData={bookingData} />
+              </div>
             </div>
           </main>
         </div>

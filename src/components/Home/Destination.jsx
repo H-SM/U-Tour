@@ -3,8 +3,8 @@ import React from "react";
 
 const Destination = ({ from, to, onFromChange, onToChange, locations }) => {
   return (
-    <div className="w-full flex justify-between bg-white/10 backdrop-blur-md rounded-3xl px-6 py-4 border border-white/20 gap-4">
-      <div className="flex flex-col justify-start items-start w-7/12 mb-2">
+    <div className="w-full flex flex-col md:flex-row justify-between bg-white/10 backdrop-blur-md rounded-3xl px-6 py-4 border border-white/20 gap-4">
+      <div className="flex flex-col justify-start items-start w-full md:w-7/12 mb-2">
         <h2 className="text-white text-[1.5rem] font-bold mb-3">
           Book Your Robot Tour Guide
         </h2>
@@ -53,7 +53,7 @@ const Destination = ({ from, to, onFromChange, onToChange, locations }) => {
         </div>
       </div>
       {/* Right side - Status Display */}
-      <div className="flex h-full w-5/12 justify-start items-end pb-2">
+      <div className="flex h-full w-full md:w-5/12 justify-start items-end pb-2">
         <div className="bg-white/10 backdrop-blur-md rounded-xl border border-white/20 w-full h-fit">
           <div className="flex flex-col items-center justify-center h-fit py-3">
               <div className="w-full space-y-4 px-2">

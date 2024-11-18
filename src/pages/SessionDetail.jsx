@@ -39,7 +39,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
       try {
         const user = await checkAuth();
         if (!user) {
-        //   navigate("/login");
+          //   navigate("/login");
         }
       } catch (error) {
         console.error("Authentication error:", error);
@@ -186,18 +186,18 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
             userDetailsFirebase={userDetailsFirebase}
             logoutUser={logoutUser}
           />
-          <div className="container mx-auto p-8">
+          <div className="container mx-auto sm:p-8">
             {loading ? (
               <div className="flex items-center justify-center h-[80vh] w-full">
                 <Loader />
               </div>
             ) : (
               <>
-                <div className="max-w-2xl mx-auto p-4 space-y-6">
+                <div className="max-w-2xl mx-auto md:p-4 space-y-6">
                   {/* Main Session Card */}
                   <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 text-white">
                     {/* Header */}
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-2">
                       <div className="text-left space-y-1">
                         <div>
                           <span className="text-gray-300">Booking ID:</span>
@@ -215,7 +215,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                       <span
                         className={`${getStateColor(
                           session.state
-                        )} px-4 py-1 rounded-full text-[0.9rem] bg-white border-[3px] font-bold`}
+                        )} px-4 py-1 rounded-full text-[0.9rem] bg-white border-[3px] font-bold mt-4 md:mt-0`}
                       >
                         {session.state}
                       </span>
@@ -225,10 +225,10 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                       <h1 className="text-2xl font-bold">Session Details</h1>
                     </div>
 
-                    <div className="flex justify-between w-full h-fit border-b-[1px] border-dashed mb-6">
+                    <div className="flex flex-col md:flex-row justify-between w-full h-fit border-b-[1px] border-dashed mb-6">
                       {/* Date and Time */}
                       <div className="py-4 ml-4">
-                        <div className="flex items-center text-lg">
+                        <div className="flex items-center text-lg text-left">
                           <span className="font-semibold">
                             {formatDate(session.departureTime)}
                           </span>
@@ -240,7 +240,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                       </div>
 
                       {/* Tour Type */}
-                      <div className="text-right py-4 mt-1 mr-4">
+                      <div className="text-left md:text-right py-4 mt-1 mr-4 ml-4 md:ml-0">
                         <div className="text-gray-100 text-md">Tour Type</div>
                         <div className="font-semibold capitalize">
                           {session.tourType}
@@ -250,44 +250,6 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
 
                     {/* Location Details */}
                     <div className="space-y-4 mb-6 text-left">
-                      {/* To Location */}
-                      <div className="flex items-start space-x-3">
-                        <div className="w-[2.4rem] text-green-500">
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                            <g
-                              id="SVGRepo_tracerCarrier"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                            ></g>
-                            <g id="SVGRepo_iconCarrier">
-                              {" "}
-                              <path
-                                fill-rule="evenodd"
-                                clip-rule="evenodd"
-                                d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM14.1096 8.41878L15.592 9.90258C16.598 10.9095 17.1009 11.413 16.9836 11.9557C16.8662 12.4985 16.2003 12.7487 14.8684 13.2491L13.9463 13.5955C13.5896 13.7295 13.4113 13.7965 13.2736 13.9157C13.2134 13.9679 13.1594 14.027 13.1129 14.0918C13.0068 14.2397 12.9562 14.4236 12.855 14.7913C12.6249 15.6276 12.5099 16.0457 12.2359 16.202C12.1205 16.2679 11.9898 16.3025 11.8569 16.3023C11.5416 16.3018 11.2352 15.9951 10.6225 15.3818L10.1497 14.9086L8.531 16.5299C8.23835 16.823 7.76348 16.8234 7.47034 16.5308C7.17721 16.2381 7.17683 15.7632 7.46948 15.4701L9.08892 13.848C9.08871 13.8482 9.08914 13.8478 9.08892 13.848L8.64262 13.4C8.03373 12.7905 7.72929 12.4858 7.72731 12.1723C7.72645 12.0368 7.76164 11.9035 7.82926 11.786C7.98568 11.5145 8.40079 11.4 9.23097 11.1711C9.5993 11.0696 9.78346 11.0188 9.9315 10.9123C9.99792 10.8644 10.0583 10.8088 10.1114 10.7465C10.2298 10.6076 10.2956 10.4281 10.4271 10.069L10.7611 9.15753C11.2545 7.81078 11.5013 7.1374 12.0455 7.01734C12.5896 6.89728 13.0963 7.40445 14.1096 8.41878Z"
-                                fill="currentColor"
-                              ></path>{" "}
-                            </g>
-                          </svg>
-                        </div>
-                        <div>
-                          <div className="text-gray-200 text-md">To</div>
-                          <div className="font-bold">
-                            {session.to
-                              .replace(/-/g, " ")
-                              .replace(/\b\w/g, (l) => l.toUpperCase())}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Line connector */}
-                      <div className="ml-[1.1rem] w-[4px] rounded-lg h-10 bg-gray-200"></div>
-
                       {/* From Location */}
                       <div className="flex items-center space-x-3">
                         <div className="w-[2.4rem] text-orange-500">
@@ -339,6 +301,44 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Line connector */}
+                      <div className="ml-[1.1rem] w-[4px] rounded-lg h-10 bg-gray-200"></div>
+
+                      {/* To Location */}
+                      <div className="flex items-start space-x-3">
+                        <div className="w-[2.4rem] text-green-500">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                            <g
+                              id="SVGRepo_tracerCarrier"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            ></g>
+                            <g id="SVGRepo_iconCarrier">
+                              {" "}
+                              <path
+                                fill-rule="evenodd"
+                                clip-rule="evenodd"
+                                d="M22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12ZM14.1096 8.41878L15.592 9.90258C16.598 10.9095 17.1009 11.413 16.9836 11.9557C16.8662 12.4985 16.2003 12.7487 14.8684 13.2491L13.9463 13.5955C13.5896 13.7295 13.4113 13.7965 13.2736 13.9157C13.2134 13.9679 13.1594 14.027 13.1129 14.0918C13.0068 14.2397 12.9562 14.4236 12.855 14.7913C12.6249 15.6276 12.5099 16.0457 12.2359 16.202C12.1205 16.2679 11.9898 16.3025 11.8569 16.3023C11.5416 16.3018 11.2352 15.9951 10.6225 15.3818L10.1497 14.9086L8.531 16.5299C8.23835 16.823 7.76348 16.8234 7.47034 16.5308C7.17721 16.2381 7.17683 15.7632 7.46948 15.4701L9.08892 13.848C9.08871 13.8482 9.08914 13.8478 9.08892 13.848L8.64262 13.4C8.03373 12.7905 7.72929 12.4858 7.72731 12.1723C7.72645 12.0368 7.76164 11.9035 7.82926 11.786C7.98568 11.5145 8.40079 11.4 9.23097 11.1711C9.5993 11.0696 9.78346 11.0188 9.9315 10.9123C9.99792 10.8644 10.0583 10.8088 10.1114 10.7465C10.2298 10.6076 10.2956 10.4281 10.4271 10.069L10.7611 9.15753C11.2545 7.81078 11.5013 7.1374 12.0455 7.01734C12.5896 6.89728 13.0963 7.40445 14.1096 8.41878Z"
+                                fill="currentColor"
+                              ></path>{" "}
+                            </g>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="text-gray-200 text-md">To</div>
+                          <div className="font-bold">
+                            {session.to
+                              .replace(/-/g, " ")
+                              .replace(/\b\w/g, (l) => l.toUpperCase())}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div className="w-full h-full max-h-[500px] rounded-3xl overflow-hidden bg-gray-600">
                       <iframe
@@ -369,20 +369,20 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                             <img
                               src={participant.photoURL}
                               alt={participant.displayName}
-                              className="w-[5rem] h-[5rem] rounded-full"
+                              className="w-[4rem] h-[4rem] md:w-[5rem] md:h-[5rem] rounded-full"
                             />
                           ) : (
-                            <div className="w-[5rem] h-[5rem] rounded-full bg-blue-500 flex items-center justify-center">
-                              <span className="text-[2rem] font-semibold text-white">
+                            <div className="w-[4rem] h-[4rem] md:w-[5rem] md:h-[5rem] rounded-full bg-blue-500 flex items-center justify-center">
+                              <span className="text-[1rem] md:text-[2rem] font-semibold text-white">
                                 {participant?.displayName?.charAt(0) || "?"}
                               </span>
                             </div>
                           )}
                           <div className="flex flex-col justify-start items-start">
-                            <p className="font-bold text-[1.4rem]">
+                            <p className="font-bold text-[1.2rem] md:text-[1.4rem]">
                               {participant?.displayName || "Unknown User"}
                             </p>
-                            <p className="text-md text-gray-200 font-semibold">
+                            <p className="text-sm md:text-md text-gray-200 font-semibold">
                               {participant?.email || "No email available"}
                             </p>
                           </div>
@@ -405,20 +405,20 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                               <img
                                 src={booker.photoURL}
                                 alt={booker.displayName}
-                                className="w-[5rem] h-[5rem] rounded-full"
+                                className="w-[4rem] h-[4rem] md:w-[5rem] md:h-[5rem] rounded-full"
                               />
                             ) : (
-                              <div className="w-[5rem] h-[5rem] rounded-full bg-blue-500 flex items-center justify-center">
-                                <span className="text-[2rem] font-semibold text-white">
+                              <div className="w-[4rem] h-[4rem] md:w-[5rem] md:h-[5rem] rounded-full bg-blue-500 flex items-center justify-center">
+                                <span className="text-[1rem] md:text-[2rem] font-semibold text-white">
                                   {booker?.displayName?.charAt(0) || "?"}
                                 </span>
                               </div>
                             )}
                             <div className="flex flex-col justify-start items-start">
-                              <p className="font-bold text-[1.4rem]">
+                              <p className="font-bold text-[1.2rem] md:text-[1.4rem]">
                                 {booker?.displayName || "Unknown User"}
                               </p>
-                              <p className="text-md text-gray-200 font-semibold">
+                              <p className="text-sm md:text-md text-gray-200 font-semibold">
                                 {booker?.email || "No email available"}
                               </p>
                             </div>
@@ -466,14 +466,18 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
 
                     {/* Action Buttons */}
                     <div className="flex space-x-3 mt-6">
-                      {session.state === "QUEUED" && userDetailsFirebase && (userDetailsFirebase.uid === session.bookingUserId || userDetailsFirebase.uid === session.bookingUserId) && (
-                        <button
-                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex-1"
-                          onClick={() => setIsModalOpen(true)}
-                        >
-                          Cancel Session
-                        </button>
-                      )}
+                      {session.state === "QUEUED" &&
+                        userDetailsFirebase &&
+                        (userDetailsFirebase.uid === session.bookingUserId ||
+                          userDetailsFirebase.uid ===
+                            session.bookingUserId) && (
+                          <button
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex-1"
+                            onClick={() => setIsModalOpen(true)}
+                          >
+                            Cancel Session
+                          </button>
+                        )}
                       <button
                         className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center justify-center space-x-2 flex-1"
                         onClick={handleShare}
