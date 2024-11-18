@@ -1,15 +1,15 @@
-const express = require("express");
-const { PrismaClient } = require("@prisma/client");
-const admin = require("firebase-admin");
-const router = express.Router();
-const { handleUserCreation } = require("./../utils/userManager");
-const { generateCustomId } = require("./../utils/idGenerator");
-const { htmlTemplate } = require("./../templates/template");
-const sgMail = require("@sendgrid/mail");
+import express from "express";
+import { PrismaClient } from "@prisma/client";
+import admin from "firebase-admin";
+import { handleUserCreation } from "./../utils/userManager.js";
+import { generateCustomId } from "./../utils/idGenerator.js";
+import { htmlTemplate } from "./../templates/template.js";
+import sgMail from "@sendgrid/mail";
+
+const router = express.Router(); // Create router correctly
+const prisma = new PrismaClient();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-
-const prisma = new PrismaClient();
 
 const formatLocation = (location) => {
   return location
@@ -209,10 +209,28 @@ router.post("/create", async (req, res) => {
       console.error("Error sending confirmation emails:", emailError);
     }
 
+    // await SessionQueueManager.addSessionToQueue(session.id);
+
     res.status(201).json(session);
   } catch (error) {
     console.error("Error creating session:", error);
     res.status(500).json({ error: "Failed to create session" });
+  }
+});
+
+// Enhanced route to check available slots
+router.get("/available-slots", async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) {
+      return res.status(400).json({ error: "Date is required" });
+    }
+    const availableSlots = {}; 
+    // const availableSlots = await SessionQueueManager.getAvailableSlots(new Date(date));
+    res.json(availableSlots);
+  } catch (error) {
+    console.error("Error fetching available slots:", error);
+    res.status(500).json({ error: "Failed to fetch available slots" });
   }
 });
 
@@ -227,6 +245,11 @@ router.patch("/:sessionId/state", async (req, res) => {
       return res.status(400).json({ error: "Invalid session state" });
     }
 
+    // If cancelling, remove from queue
+    // if (state === "CANCEL") {
+    //   await SessionQueueManager.cancelSession(sessionId);
+    // }
+
     const updatedSession = await prisma.session.update({
       where: { id: sessionId },
       data: { state },
@@ -236,6 +259,39 @@ router.patch("/:sessionId/state", async (req, res) => {
   } catch (error) {
     console.error("Error updating session state:", error);
     res.status(500).json({ error: "Failed to update session state" });
+  }
+});
+
+// New route to get upcoming sessions
+router.get("/upcoming", async (req, res) => {
+  try {
+    const upcomingSessions = await prisma.session.findMany({
+      where: {
+        departureTime: {
+          gte: new Date(),
+        },
+        state: {
+          not: "CANCEL",
+        },
+      },
+      orderBy: {
+        departureTime: "asc",
+      },
+      select: {
+        id: true,
+        departureTime: true,
+        to: true,
+        from: true,
+        tourType: true,
+        team: true,
+      },
+      take: 50, // Limit to 50 upcoming sessions
+    });
+
+    res.json(upcomingSessions);
+  } catch (error) {
+    console.error("Error fetching upcoming sessions:", error);
+    res.status(500).json({ error: "Failed to fetch upcoming sessions" });
   }
 });
 
@@ -335,4 +391,4 @@ router.get("/stats", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

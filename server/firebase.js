@@ -1,4 +1,8 @@
-const admin = require("firebase-admin");
+import admin from 'firebase-admin';
+
+import dotenv from 'dotenv';
+dotenv.config();
+
 const serviceAccount ={
   "type": "service_account",
   "project_id": process.env.FIREBASE_PROJECT_ID,
@@ -20,4 +24,4 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-module.exports = { admin, db };
+export { admin, db };

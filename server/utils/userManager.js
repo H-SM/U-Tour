@@ -1,8 +1,9 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
-const { generateCustomId } = require("./../utils/idGenerator");
+import { PrismaClient } from "@prisma/client";
+import { generateCustomId } from "./../utils/idGenerator.js";
 
-async function handleUserCreation({ email, displayName }) {
+const prisma = new PrismaClient();
+
+export async function handleUserCreation({ email, displayName }) {
   // This function only creates/gets non-Firebase users
   const existingUser = await prisma.user.findUnique({
     where: { email, migratedToFirebase: false },
@@ -21,7 +22,7 @@ async function handleUserCreation({ email, displayName }) {
   });
 }
 
-async function migrateToFirebase(email, firebaseUid) {
+export async function migrateToFirebase(email, firebaseUid) {
   // Find the non-Firebase user
   const existingUser = await prisma.user.findFirst({
     where: {
@@ -85,7 +86,7 @@ async function migrateToFirebase(email, firebaseUid) {
   return { migrated: true, firebaseUid };
 }
 
-module.exports = {
-    handleUserCreation,
-    migrateToFirebase
-};
+export default {
+  handleUserCreation,
+  migrateToFirebase
+ };

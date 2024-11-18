@@ -1,4 +1,4 @@
-const htmlTemplate = `<!DOCTYPE html>
+export const htmlTemplate = `<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -82,6 +82,6 @@ const htmlTemplate = `<!DOCTYPE html>
 </body>
 </html>`;
 
-module.exports = {
+export default {
   htmlTemplate,
 };

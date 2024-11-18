@@ -1,12 +1,11 @@
-const express = require("express");
-var cors = require("cors");
+import express from "express";
+import cors from "cors";
+import request from "request";
+import dotenv from "dotenv";
+import { admin, db } from "./firebase.js";
+import axios from "axios";
 
-const request = require("request");
-
-require("dotenv").config();
-const { admin, db } = require("./firebase"); 
-
-const { default: axios } = require("axios");
+dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -14,14 +13,12 @@ const port = process.env.PORT || 8080;
 app.use(cors());
 app.use(express.json());
 
-
 app.get("/", (req, res) => {
   res.send("Hello, World!!!!");
 });
 
 app.get("/test-firebase-admin", async (req, res) => {
   try {
-    // Attempt to list users (an operation that requires Firebase Admin to be correctly set up)
     const listUsersResult = await admin.auth().listUsers(1);
     res.json({
       message: "Firebase Admin is working!",
@@ -33,9 +30,13 @@ app.get("/test-firebase-admin", async (req, res) => {
   }
 });
 
-app.use("/mail", require("./routes/mailer"));
-app.use('/users', require('./routes/user'));
-app.use("/sessions", require("./routes/session")); 
+import mailerRoutes from "./routes/mailer.js";
+import userRoutes from "./routes/user.js";
+import sessionRoutes from "./routes/session.js";
+
+app.use("/mail", mailerRoutes);
+app.use('/users', userRoutes);
+app.use("/sessions", sessionRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running at ${port}`);

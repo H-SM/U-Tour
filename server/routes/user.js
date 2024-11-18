@@ -1,9 +1,11 @@
-const express = require("express");
-const { PrismaClient } = require("@prisma/client");
-const admin = require("firebase-admin");
+import express from 'express';
+import { PrismaClient } from '@prisma/client';
+import admin from 'firebase-admin';
+import { migrateToFirebase } from "./../utils/userManager.js";
+
 const router = express.Router();
 const prisma = new PrismaClient();
-const { migrateToFirebase } = require("./../utils/userManager");
+
 
 router.get("/:userId", async (req, res) => {
   try {
@@ -313,4 +315,4 @@ router.get("/:userId/state/:state", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
