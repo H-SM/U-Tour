@@ -275,13 +275,16 @@ const InputForm = ({
       if (!bookingData.departureDate) return;
 
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_URL}/tours/booked-hours`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ date: bookingData.departureDate }),
-        });
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL}/tours/booked-hours`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ date: bookingData.departureDate }),
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch booked hours");
@@ -298,17 +301,53 @@ const InputForm = ({
     fetchBookedHours();
   }, [bookingData.departureDate]);
 
+  const getMinDate = () => {
+    const now = new Date();
+    
+    // If current time is after 5 PM, set min date to tomorrow
+    if (now.getHours() >= 17) {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      return tomorrow.toISOString().split('T')[0];
+    }
+    
+    // Otherwise, use today's date
+    return now.toISOString().split('T')[0];
+  };
+
   const getAvailableHours = () => {
     const MAX_SINGLE_SIZE = 10;
     const MAX_TEAM_SIZE = 10;
+    const now = new Date();
+    const selectedDate = new Date(bookingData.departureDate);
 
-    return FIXED_HOURS.filter(hour => {
+    // Check if the selected date is today
+    const isToday =
+      now.getFullYear() === selectedDate.getFullYear() &&
+      now.getMonth() === selectedDate.getMonth() &&
+      now.getDate() === selectedDate.getDate();
+
+    return FIXED_HOURS.filter((hour) => {
       const hourValue = new Date(`2000-01-01T${hour.value}`).getHours();
-      const bookedHour = bookedHours.find(b => b.hour === hourValue);
+
+      if (isToday) {
+        const hourDateTime = new Date(selectedDate);
+        hourDateTime.setHours(hourValue, 0, 0, 0);
+
+        // Check if current time is within 5 minutes of next hour
+        const isNearNextHour =
+          now.getMinutes() >= 55 && now.getHours() + 1 === hourValue;
+
+        // Filter out hours that have already passed or are too close to passing
+        if (hourDateTime <= now || isNearNextHour) {
+          return false;
+        }
+      }
+      const bookedHour = bookedHours.find((b) => b.hour === hourValue);
 
       if (!bookedHour) return true; // No bookings for this hour
 
-      if (bookingData.type === 'single') {
+      if (bookingData.type === "single") {
         return bookedHour.totalSize < MAX_SINGLE_SIZE;
       }
 
@@ -518,7 +557,7 @@ const InputForm = ({
               name="departureDate"
               value={bookingData.departureDate}
               onChange={modifiedHandleInputChange}
-              min={today}
+              min={getMinDate()}
               className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
             />
           </div>
