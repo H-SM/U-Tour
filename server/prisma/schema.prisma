@@ -26,11 +26,11 @@ model Session {
   isUserFirebaseUser    Boolean     @default(true)  
   state                 SessionState
   to                    String
+  message               String?
   from                  String
   departureTime         DateTime
   tourType             String
   createdAt            DateTime    @default(now())
-  expiredAt            DateTime?
   team                 Team?
   tourId               String?  
   tour                 Tour?       @relation(fields: [tourId], references: [id])    
