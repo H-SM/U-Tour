@@ -11,6 +11,23 @@ import SearchUser from "./SearchUser";
 import debounce from "lodash/debounce";
 import { useNavigate } from "react-router-dom";
 
+const FIXED_HOURS = [
+  // { value: "05:00", label: "5 AM" },
+  // { value: "06:00", label: "6 AM" },
+  // { value: "07:00", label: "7 AM" },
+  // { value: "08:00", label: "8 AM" },
+  { value: "09:00", label: "9 AM" },
+  { value: "10:00", label: "10 AM" },
+  { value: "11:00", label: "11 AM" },
+  { value: "12:00", label: "12 PM" },
+  { value: "13:00", label: "1 PM" },
+  { value: "14:00", label: "2 PM" },
+  { value: "15:00", label: "3 PM" },
+  { value: "16:00", label: "4 PM" },
+  { value: "17:00", label: "5 PM" },
+  // { value: "18:00", label: "6 PM" },
+];
+
 const InputForm = ({
   handleInputChange,
   bookingData,
@@ -27,10 +44,15 @@ const InputForm = ({
   const [loadingSearch, setLoadingSearch] = useState(false);
   const nameSearchRef = useRef(null);
   const emailSearchRef = useRef(null);
+  const [bookedHours, setBookedHours] = useState([]);
   const [useLoggedInUser, setUseLoggedInUser] = useState(false);
   const navigate = useNavigate();
   // Get today's date in YYYY-MM-DD format for min date attribute
   const today = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    console.log("Booking Data:", bookingData);
+  }, [bookingData]);
 
   useEffect(() => {
     if (useLoggedInUser && userDetailsFirebase) {
@@ -248,6 +270,69 @@ const InputForm = ({
     }
   };
 
+  useEffect(() => {
+    const fetchBookedHours = async () => {
+      if (!bookingData.departureDate) return;
+
+      try {
+        const response = await fetch(`${process.env.REACT_APP_API_URL}/tours/booked-hours`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ date: bookingData.departureDate }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch booked hours");
+        }
+
+        const data = await response.json();
+        setBookedHours(data);
+      } catch (error) {
+        console.error("Error fetching booked hours:", error);
+        showAlert("Failed to fetch available hours", "error");
+      }
+    };
+
+    fetchBookedHours();
+  }, [bookingData.departureDate]);
+
+  const getAvailableHours = () => {
+    const MAX_SINGLE_SIZE = 10;
+    const MAX_TEAM_SIZE = 10;
+
+    return FIXED_HOURS.filter(hour => {
+      const hourValue = new Date(`2000-01-01T${hour.value}`).getHours();
+      const bookedHour = bookedHours.find(b => b.hour === hourValue);
+
+      if (!bookedHour) return true; // No bookings for this hour
+
+      if (bookingData.type === 'single') {
+        return bookedHour.totalSize < MAX_SINGLE_SIZE;
+      }
+
+      // For team bookings, check remaining capacity
+      const remainingCapacity = MAX_TEAM_SIZE - bookedHour.totalSize;
+      return remainingCapacity >= parseInt(bookingData.teamSize || 1);
+    });
+  };
+
+  const modifiedHandleInputChange = (event) => {
+    const { name, value } = event.target;
+
+    if (name === "departureDate") {
+      // Reset departure time when date changes
+      setBookingData((prev) => ({
+        ...prev,
+        [name]: value,
+        departureTime: "", // Clear previous time selection
+      }));
+    } else {
+      handleInputChange(event);
+    }
+  };
+
   return (
     <div className="w-full bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20">
       <div className="space-y-6">
@@ -422,7 +507,7 @@ const InputForm = ({
           </div>
         )}
 
-        {/* Date and Time Selection */}
+        {/* Date and Time Selection - Modified */}
         <div className="flex justify-between items-start gap-2">
           <div className="space-y-2 w-1/2">
             <label className="text-white text-sm font-medium">
@@ -432,7 +517,7 @@ const InputForm = ({
               type="date"
               name="departureDate"
               value={bookingData.departureDate}
-              onChange={handleInputChange}
+              onChange={modifiedHandleInputChange}
               min={today}
               className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
             />
@@ -441,13 +526,20 @@ const InputForm = ({
             <label className="text-white text-sm font-medium">
               Departure Time
             </label>
-            <input
-              type="time"
+            <select
               name="departureTime"
               value={bookingData.departureTime}
               onChange={handleInputChange}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
-            />
+              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white disabled:opacity-60"
+              disabled={bookingData.departureDate === ""}
+            >
+              <option value="">Select Time</option>
+              {getAvailableHours().map((hour) => (
+                <option key={hour.value} value={hour.value}>
+                  {hour.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

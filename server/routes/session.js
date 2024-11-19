@@ -5,7 +5,7 @@ import { handleUserCreation } from "./../utils/userManager.js";
 import { generateCustomId } from "./../utils/idGenerator.js";
 import { htmlTemplate } from "./../templates/template.js";
 import sgMail from "@sendgrid/mail";
-
+import { manageTourForSession } from "./tour.js";
 const router = express.Router(); // Create router correctly
 const prisma = new PrismaClient();
 
@@ -17,7 +17,6 @@ const formatLocation = (location) => {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 };
-
 
 // Route to create a new session
 router.post("/create", async (req, res) => {
@@ -32,6 +31,29 @@ router.post("/create", async (req, res) => {
       tourType,
       team, // Optional team information
     } = req.body;
+
+    const sessionTimestamp = new Date(departureTime);
+    const hourStart = new Date(sessionTimestamp.getFullYear(), 
+    sessionTimestamp.getMonth(), 
+    sessionTimestamp.getDate(), 
+    sessionTimestamp.getHours(), 0, 0);
+
+    // Check existing tours for this hour
+    const existingTour = await prisma.tour.findFirst({
+      where: {
+        timestamp: hourStart,
+      },
+    });
+    // AykTlpjdYSvfjfPL1xLAeEoPa9gI
+    // 67Aq8hTXwrDd9wLCzmDdcNGpzeET
+    const sessionTeamSize = team ? team.size : 1;
+    const totalCurrentSize = existingTour ? existingTour.totalSize : 0;
+
+    if (existingTour && totalCurrentSize + sessionTeamSize > 10) {
+      return res.status(400).json({ 
+        error: "This hour is fully booked. No more sessions can be added." 
+      });
+    }
 
     // Handle booking user
     let finalBookingUserId;
@@ -129,6 +151,15 @@ router.post("/create", async (req, res) => {
       },
     });
 
+    // After creating the session, manage tour allocation
+    const tourId = await manageTourForSession(session);
+
+    // Update the session with the tour ID
+    await prisma.session.update({
+      where: { id: session.id },
+      data: { tourId },
+    });
+
     // Send confirmation emails
     try {
       // Prepare common email data
@@ -142,18 +173,20 @@ router.post("/create", async (req, res) => {
       if (bookingUserEmail === userEmail) {
         // If booking user is the same as tour user, send only one email
         const combinedMsg = {
-          personalizations: [{
-            to: [{ email: userEmail }],
-            substitutions: {
-              ...emailData,
-              Name: userName,
-              Email: userEmail,
-              Role: "Self Booking",  // Indicate it's a self-booking
-              AdditionalInfo: team
-                ? `Team ${team.name} booking for ${team.size} people.`
-                : "Individual booking",
+          personalizations: [
+            {
+              to: [{ email: userEmail }],
+              substitutions: {
+                ...emailData,
+                Name: userName,
+                Email: userEmail,
+                Role: "Self Booking", // Indicate it's a self-booking
+                AdditionalInfo: team
+                  ? `Team ${team.name} booking for ${team.size} people.`
+                  : "Individual booking",
+              },
             },
-          }],
+          ],
           from: process.env.SENDGRID_SENDER,
           subject: "U Robot Tour Guide Booking Confirmation",
           html: htmlTemplate,
@@ -163,36 +196,40 @@ router.post("/create", async (req, res) => {
       } else {
         // If different users, send separate emails
         const bookingUserMsg = {
-          personalizations: [{
-            to: [{ email: bookingUserEmail }],
-            substitutions: {
-              ...emailData,
-              Name: userName,
-              Email: bookingUserEmail,
-              Role: "Booking User",
-              AdditionalInfo: team
-                ? `Team ${team.name} booking for ${team.size} people.`
-                : "Individual booking",
+          personalizations: [
+            {
+              to: [{ email: bookingUserEmail }],
+              substitutions: {
+                ...emailData,
+                Name: userName,
+                Email: bookingUserEmail,
+                Role: "Booking User",
+                AdditionalInfo: team
+                  ? `Team ${team.name} booking for ${team.size} people.`
+                  : "Individual booking",
+              },
             },
-          }],
+          ],
           from: process.env.SENDGRID_SENDER,
           subject: "U Robot Tour Guide Booking Confirmation",
           html: htmlTemplate,
         };
 
         const sessionUserMsg = {
-          personalizations: [{
-            to: [{ email: userEmail }],
-            substitutions: {
-              ...emailData,
-              Name: userName,
-              Email: userEmail,
-              Role: "Tour Participant",
-              AdditionalInfo: team
-                ? `Part of team: ${team.name}. Team booking for ${team.size} people.`
-                : "Individual booking",
+          personalizations: [
+            {
+              to: [{ email: userEmail }],
+              substitutions: {
+                ...emailData,
+                Name: userName,
+                Email: userEmail,
+                Role: "Tour Participant",
+                AdditionalInfo: team
+                  ? `Part of team: ${team.name}. Team booking for ${team.size} people.`
+                  : "Individual booking",
+              },
             },
-          }],
+          ],
           from: process.env.SENDGRID_SENDER,
           subject: "U Robot Tour Guide Booking Confirmation",
           html: htmlTemplate,
@@ -209,10 +246,14 @@ router.post("/create", async (req, res) => {
       console.error("Error sending confirmation emails:", emailError);
     }
 
-    // await SessionQueueManager.addSessionToQueue(session.id);
-
     res.status(201).json(session);
   } catch (error) {
+    if (
+      error.message ===
+      "This hour is fully booked. No more sessions can be added."
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
     console.error("Error creating session:", error);
     res.status(500).json({ error: "Failed to create session" });
   }
@@ -225,8 +266,7 @@ router.get("/available-slots", async (req, res) => {
     if (!date) {
       return res.status(400).json({ error: "Date is required" });
     }
-    const availableSlots = {}; 
-    // const availableSlots = await SessionQueueManager.getAvailableSlots(new Date(date));
+    const availableSlots = {};
     res.json(availableSlots);
   } catch (error) {
     console.error("Error fetching available slots:", error);
@@ -245,11 +285,38 @@ router.patch("/:sessionId/state", async (req, res) => {
       return res.status(400).json({ error: "Invalid session state" });
     }
 
-    // If cancelling, remove from queue
-    // if (state === "CANCEL") {
-    //   await SessionQueueManager.cancelSession(sessionId);
-    // }
+    if (state === "CANCEL") {
+      // First, find the session with its tour and team details
+      const session = await prisma.session.findUnique({
+        where: { id: sessionId },
+        include: { 
+          tour: true,
+          team: true 
+        }
+      });
 
+      if (!session || !session.tourId) {
+        return res.status(404).json({ error: "Session or Tour not found" });
+      }
+
+      // Calculate the size to remove (team size or 1 for individual)
+      const sizeToRemove = session.team ? session.team.size : 1;
+
+      // Update the tour: remove session and reduce total size
+      await prisma.tour.update({
+        where: { id: session.tourId },
+        data: {
+          totalSize: {
+            decrement: sizeToRemove
+          },
+          sessions: {
+            disconnect: { id: sessionId }
+          }
+        }
+      });
+    }
+
+    // Update the session state
     const updatedSession = await prisma.session.update({
       where: { id: sessionId },
       data: { state },
@@ -303,8 +370,8 @@ router.get("/:sessionId", async (req, res) => {
     const session = await prisma.session.findUnique({
       where: { id: sessionId },
       include: {
-        team: true // Include team details if they exist
-      }
+        team: true, // Include team details if they exist
+      },
     });
 
     if (!session) return res.status(404).json({ error: "Session not found" });

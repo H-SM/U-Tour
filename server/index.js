@@ -33,10 +33,12 @@ app.get("/test-firebase-admin", async (req, res) => {
 import mailerRoutes from "./routes/mailer.js";
 import userRoutes from "./routes/user.js";
 import sessionRoutes from "./routes/session.js";
+import tourRoutes from "./routes/tour.js";
 
 app.use("/mail", mailerRoutes);
 app.use('/users', userRoutes);
 app.use("/sessions", sessionRoutes);
+app.use("/tours", tourRoutes);
 
 app.listen(port, () => {
   console.log(`Server is running at ${port}`);

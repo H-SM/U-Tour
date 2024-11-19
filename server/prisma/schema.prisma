@@ -31,7 +31,17 @@ model Session {
   tourType             String
   createdAt            DateTime    @default(now())
   expiredAt            DateTime?
-  team                 Team?      
+  team                 Team?
+  tourId               String?  
+  tour                 Tour?       @relation(fields: [tourId], references: [id])    
+}
+
+model Tour {
+  id             String     @id
+  timestamp      DateTime
+  sessions       Session[]
+  totalSize      Int        @default(0)
+  createdAt      DateTime   @default(now())
 }
 
 model Team {

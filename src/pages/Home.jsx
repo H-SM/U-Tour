@@ -19,6 +19,7 @@ const Dashboard = ({ showAlert, isExpanded, setIsExpanded }) => {
     type: "single",
     from: "",
     to: "",
+    departureDate: "",
     departureTime: "",
     email: "",
     teamSize: 1,
