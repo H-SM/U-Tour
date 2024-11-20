@@ -11,6 +11,7 @@ import {
   cleanEmptyTours, 
   displayTourQueueStatus,
   getAllQueuedTours,
+  getAllQueuedToursConcise,
   tourQueue
 } from "./../queues/tourQueue.js"; 
 
@@ -36,26 +37,28 @@ async function manageTourForSession(session) {
     },
   });
 
+  //TODO: think about how to handle the destination and the starting point for a tour
+  // Changed to a single session tour for now
   const sessionTeamSize = session.team ? session.team.size : 1;
-  const totalCurrentSize = tour ? tour.totalSize : 0;
+  // const totalCurrentSize = tour ? tour.totalSize : 0;
 
   // Special case: Single team with > 10 members gets its own tour
-  if (sessionTeamSize > 10 && !tour) {
-    tour = await prisma.tour.create({
-      data: {
-        id: generateCustomId(),
-        timestamp: hourStart,
-        totalSize: sessionTeamSize,
-        sessions: {
-          connect: { id: session.id },
-        },
-      },
-    });
+  // if (sessionTeamSize > 10 && !tour) {
+  //   tour = await prisma.tour.create({
+  //     data: {
+  //       id: generateCustomId(),
+  //       timestamp: hourStart,
+  //       totalSize: sessionTeamSize,
+  //       sessions: {
+  //         connect: { id: session.id },
+  //       },
+  //     },
+  //   });
     
-    // Add tour to queue
-    await addTourToQueue(tour);
-    return tour.id;
-  }
+  //   // Add tour to queue
+  //   await addTourToQueue(tour);
+  //   return tour.id;
+  // }
 
   // If no existing tour
   if (!tour) {
@@ -64,6 +67,8 @@ async function manageTourForSession(session) {
         id: generateCustomId(),
         timestamp: hourStart,
         totalSize: sessionTeamSize,
+        to: session.to,
+        from: session.from,
         sessions: {
           connect: { id: session.id },
         },
@@ -72,23 +77,44 @@ async function manageTourForSession(session) {
     
     // Add tour to queue
     await addTourToQueue(tour);
-  } else if (totalCurrentSize + sessionTeamSize > 10) {
+  } else {
     // Throw an error if the hour is fully booked
     throw new Error(
       "This hour is fully booked. No more sessions can be added."
     );
-  } else {
-    // Add to existing tour
-    tour = await prisma.tour.update({
-      where: { id: tour.id },
-      data: {
-        totalSize: totalCurrentSize + sessionTeamSize,
-        sessions: {
-          connect: { id: session.id },
-        },
-      },
-    });
-  }
+  } 
+
+  // if (!tour) {
+  //   tour = await prisma.tour.create({
+  //     data: {
+  //       id: generateCustomId(),
+  //       timestamp: hourStart,
+  //       totalSize: sessionTeamSize,
+  //       sessions: {
+  //         connect: { id: session.id },
+  //       },
+  //     },
+  //   });
+    
+  //   // Add tour to queue
+  //   await addTourToQueue(tour);
+  // } else if (totalCurrentSize + sessionTeamSize > 10) {
+  //   // Throw an error if the hour is fully booked
+  //   throw new Error(
+  //     "This hour is fully booked. No more sessions can be added."
+  //   );
+  // } else {
+  //   // Add to existing tour
+  //   tour = await prisma.tour.update({
+  //     where: { id: tour.id },
+  //     data: {
+  //       totalSize: totalCurrentSize + sessionTeamSize,
+  //       sessions: {
+  //         connect: { id: session.id },
+  //       },
+  //     },
+  //   });
+  // }
   return tour.id;
 }
 
@@ -128,6 +154,16 @@ router.get("/next-tour-priority", async (req, res) => {
 router.get("/queued-tours", async (req, res) => {
   try {
     const queuedTours = await getAllQueuedTours();
+    res.json(queuedTours);
+  } catch (error) {
+    console.error("Error fetching queued tours:", error);
+    res.status(500).json({ error: "Failed to fetch queued tours" });
+  }
+});
+
+router.get("/queued-tours-concise", async (req, res) => {
+  try {
+    const queuedTours = await getAllQueuedToursConcise();
     res.json(queuedTours);
   } catch (error) {
     console.error("Error fetching queued tours:", error);

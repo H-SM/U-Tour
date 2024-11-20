@@ -9,51 +9,53 @@ datasource db {
 }
 
 model User {
-  id                String    @id 
-  email             String    @unique
-  displayName       String?
+  id                 String   @id
+  email              String   @unique
+  displayName        String?
   migratedToFirebase Boolean  @default(false)
-  firebaseUid       String?   @unique
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  firebaseUid        String?  @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model Session {
-  id                    String      @id
-  bookingUserId         String     
-  userId                String     
-  isBookedByFirebaseUser Boolean    @default(true)
-  isUserFirebaseUser    Boolean     @default(true)  
-  state                 SessionState
-  to                    String
-  message               String?
-  from                  String
-  departureTime         DateTime
-  tourType             String
-  createdAt            DateTime    @default(now())
-  team                 Team?
-  tourId               String?  
-  tour                 Tour?       @relation(fields: [tourId], references: [id])    
+  id                     String       @id
+  bookingUserId          String
+  userId                 String
+  isBookedByFirebaseUser Boolean      @default(true)
+  isUserFirebaseUser     Boolean      @default(true)
+  state                  SessionState
+  to                     String
+  message                String?
+  from                   String
+  departureTime          DateTime
+  tourType               String
+  createdAt              DateTime     @default(now())
+  team                   Team?
+  tourId                 String?
+  tour                   Tour?        @relation(fields: [tourId], references: [id])
 }
 
 model Tour {
-  id             String     @id
-  timestamp      DateTime
-  sessions       Session[]
-  totalSize      Int        @default(0)
-  createdAt      DateTime   @default(now())
+  id        String    @id
+  timestamp DateTime
+  to        String    @default("")
+  from      String    @default("")
+  sessions  Session[]
+  totalSize Int       @default(0)
+  createdAt DateTime  @default(now())
 }
 
 model Team {
-  id               String   @id @default(uuid())
-  sessionId        String   @unique
-  contactId        String  
-  isFirebaseContact Boolean @default(true)
-  name             String
-  size             Int
-  notes            String?
-  createdAt        DateTime @default(now())
-  session          Session  @relation(fields: [sessionId], references: [id])
+  id                String   @id @default(uuid())
+  sessionId         String   @unique
+  contactId         String
+  isFirebaseContact Boolean  @default(true)
+  name              String
+  size              Int
+  notes             String?
+  createdAt         DateTime @default(now())
+  session           Session  @relation(fields: [sessionId], references: [id])
 }
 
 enum SessionState {

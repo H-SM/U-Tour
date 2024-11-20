@@ -345,15 +345,16 @@ const InputForm = ({
       }
       const bookedHour = bookedHours.find((b) => b.hour === hourValue);
 
-      if (!bookedHour) return true; // No bookings for this hour
+      // if (!bookedHour) return true; // No bookings for this hour
+      return !bookedHour; // No bookings for this hour
 
-      if (bookingData.type === "single") {
-        return bookedHour.totalSize < MAX_SINGLE_SIZE;
-      }
+      // if (bookingData.type === "single") {
+      //   return bookedHour.totalSize < MAX_SINGLE_SIZE;
+      // }
 
-      // For team bookings, check remaining capacity
-      const remainingCapacity = MAX_TEAM_SIZE - bookedHour.totalSize;
-      return remainingCapacity >= parseInt(bookingData.teamSize || 1);
+      // // For team bookings, check remaining capacity
+      // const remainingCapacity = MAX_TEAM_SIZE - bookedHour.totalSize;
+      // return remainingCapacity >= parseInt(bookingData.teamSize || 1);
     });
   };
 

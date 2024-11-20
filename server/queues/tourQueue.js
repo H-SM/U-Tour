@@ -13,17 +13,17 @@ const tourQueue = new Bull("tour-queue", {
     password: process.env.REDIS_PASSWORD,
     tls: {},
     connectTimeout: 10000,
-    maxRetriesPerRequest: 3
+    maxRetriesPerRequest: 3,
   },
   defaultJobOptions: {
     priority: 1, // Lower number means higher priority
     removeOnComplete: false,
     attempts: 3,
     backoff: {
-      type: 'exponential',
-      delay: 1000
-    }
-  }
+      type: "exponential",
+      delay: 1000,
+    },
+  },
 });
 
 // Function to add a tour to the queue
@@ -31,18 +31,18 @@ async function addTourToQueue(tour) {
   try {
     // Use timestamp as priority (earlier timestamps have higher priority)
     const job = await tourQueue.add(
-      { 
-        tourId: tour.id, 
-        timestamp: tour.timestamp 
-      }, 
-      { 
+      {
+        tourId: tour.id,
+        timestamp: tour.timestamp,
+      },
+      {
         priority: tour.timestamp.getTime(),
-        jobId: tour.id // Use tour ID as unique job identifier
+        jobId: tour.id, // Use tour ID as unique job identifier
       }
     );
     return job;
   } catch (error) {
-    console.error('Error adding tour to queue:', error);
+    console.error("Error adding tour to queue:", error);
   }
 }
 
@@ -52,14 +52,14 @@ async function cleanEmptyTours() {
   for (const job of jobs) {
     const tour = await prisma.tour.findUnique({
       where: { id: job.data.tourId },
-      include: { sessions: true }
+      include: { sessions: true },
     });
 
     if (!tour || tour.sessions.length === 0) {
       await job.remove();
       if (tour) {
         await prisma.tour.delete({
-          where: { id: tour.id }
+          where: { id: tour.id },
         });
       }
     }
@@ -76,7 +76,7 @@ async function peekNextTour() {
     return {
       jobId: nextJob.id,
       tourId: nextJob.data.tourId,
-      timestamp: new Date(nextJob.data.timestamp)
+      timestamp: new Date(nextJob.data.timestamp),
     };
   }
   return null;
@@ -85,87 +85,141 @@ async function peekNextTour() {
 async function getAllQueuedToursRemoving() {
   const waitingJobs = await tourQueue.getWaiting();
   const activeJobs = await tourQueue.getActive();
-  
+
   // Combine and sort jobs
-  const allJobs = [...waitingJobs, ...activeJobs]
-    .sort((a, b) => a.opts.priority - b.opts.priority);
-  
+  const allJobs = [...waitingJobs, ...activeJobs].sort(
+    (a, b) => a.opts.priority - b.opts.priority
+  );
+
   // Map jobs to tour details
-  const queuedTours = await Promise.all(allJobs.map(async (job) => {
-    const tour = await prisma.tour.findUnique({
-      where: { id: job.data.tourId },
-      include: {
-        sessions: {
-          include: {
-            team: true
-          }
-        }
-      }
-    });
-    
-    return {
-      jobId: job.id,
-      tourId: job.data.tourId,
-      timestamp: new Date(job.data.timestamp),
-      priority: job.opts.priority,
-      tourDetails: tour
-    };
-  }));
+  const queuedTours = await Promise.all(
+    allJobs.map(async (job) => {
+      const tour = await prisma.tour.findUnique({
+        where: { id: job.data.tourId },
+        include: {
+          sessions: {
+            include: {
+              team: true,
+            },
+          },
+        },
+      });
+
+      return {
+        jobId: job.id,
+        tourId: job.data.tourId,
+        timestamp: new Date(job.data.timestamp),
+        priority: job.opts.priority,
+        tourDetails: tour,
+      };
+    })
+  );
 
   return queuedTours;
 }
 
 async function getAllQueuedTours() {
-  const jobs = await tourQueue.getJobs(['waiting', 'active', 'delayed', 'completed']);
- 
+  const jobs = await tourQueue.getJobs([
+    "waiting",
+    "active",
+    "delayed",
+    "completed",
+  ]);
+
   // Safely sort jobs by priority without modifying the queue
-  const sortedJobs = [...jobs]
-    .sort((a, b) => a.opts.priority - b.opts.priority);
- 
+  const sortedJobs = [...jobs].sort(
+    (a, b) => a.opts.priority - b.opts.priority
+  );
+
   // Map jobs to tour details
-  const queuedTours = await Promise.all(sortedJobs.map(async (job) => {
-    const tour = await prisma.tour.findUnique({
-      where: { id: job.data.tourId },
-      include: {
-        sessions: {
-          include: {
-            team: true
-          }
-        }
-      }
-    });
-   
-    return {
-      jobId: job.id,
-      tourId: job.data.tourId,
-      timestamp: new Date(job.data.timestamp),
-      priority: job.opts.priority,
-      state: job.state,
-      tourDetails: tour
-    };
-  }));
+  const queuedTours = await Promise.all(
+    sortedJobs.map(async (job) => {
+      const tour = await prisma.tour.findUnique({
+        where: { id: job.data.tourId },
+        include: {
+          sessions: {
+            include: {
+              team: true,
+            },
+          },
+        },
+      });
+
+      return {
+        jobId: job.id,
+        tourId: job.data.tourId,
+        timestamp: new Date(job.data.timestamp),
+        priority: job.opts.priority,
+        state: job.state,
+        tourDetails: tour,
+      };
+    })
+  );
+
+  return queuedTours;
+}
+
+const formatLocation = (location) => {
+  return location
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+async function getAllQueuedToursConcise() {
+  const jobs = await tourQueue.getJobs([
+    "waiting",
+    "active",
+    "delayed",
+    "completed",
+  ]);
+
+  // Safely sort jobs by priority without modifying the queue
+  const sortedJobs = [...jobs].sort(
+    (a, b) => a.opts.priority - b.opts.priority
+  );
+
+  // Map jobs to tour details
+
+  const queuedTours = await Promise.all(
+    sortedJobs.map(async (job) => {
+      const tour = await prisma.tour.findUnique({
+        where: { id: job.data.tourId },
+      });
+
+      return {
+        jobId: job.id,
+        tourId: job.data.tourId,
+        timestamp: new Date(job.data.timestamp),
+        priority: job.opts.priority,
+        state: job.state,
+        to: formatLocation(tour.to),
+        from: formatLocation(tour.from),
+      };
+    })
+  );
 
   return queuedTours;
 }
 
 // Error handling
-tourQueue.on('error', (error) => {
-  console.error('Tour Queue Error:', error);
+tourQueue.on("error", (error) => {
+  console.error("Tour Queue Error:", error);
 });
 
-tourQueue.on('failed', (job, err) => {
+tourQueue.on("failed", (job, err) => {
   console.error(`Tour Job ${job.id} failed:`, err);
 });
 
 // Process tours (example processor)
 tourQueue.process(async (job) => {
   const { tourId, timestamp } = job.data;
-  
+
   try {
     // Fetch tour details
     const tour = await prisma.tour.findUnique({
       where: { id: tourId },
-      include: { sessions: true }
+      include: { sessions: true },
     });
 
     // Process tour logic here
@@ -186,17 +240,17 @@ async function displayTourQueueStatus() {
     const activeJobs = await tourQueue.getActive();
     const completedJobs = await tourQueue.getCompleted();
 
-    console.log('\nTour Queue Status:');
-    console.log('Waiting Jobs:', waitingJobs.length);
-    console.log('Active Jobs:', activeJobs.length);
-    console.log('Completed Jobs:', completedJobs.length);
+    console.log("\nTour Queue Status:");
+    console.log("Waiting Jobs:", waitingJobs.length);
+    console.log("Active Jobs:", activeJobs.length);
+    console.log("Completed Jobs:", completedJobs.length);
 
     const nextTour = await peekNextTour();
     if (nextTour) {
-      console.log('Next Tour in Queue:', nextTour);
+      console.log("Next Tour in Queue:", nextTour);
     }
   } catch (error) {
-    console.error('Error displaying tour queue status:', error);
+    console.error("Error displaying tour queue status:", error);
   }
 }
 
@@ -212,5 +266,6 @@ export {
   cleanEmptyTours,
   displayTourQueueStatus,
   getAllQueuedTours,
-  runTourCleanup
+  getAllQueuedToursConcise,
+  runTourCleanup,
 };
