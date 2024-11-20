@@ -231,7 +231,6 @@ router.get("/:userId/get-combined", async (req, res) => {
     const recentSessions = await prisma.session.findMany({
       where: { userId },
       orderBy: { departureTime: "desc" },
-      take: 5,
     });
 
     res.json({

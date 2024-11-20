@@ -48,7 +48,7 @@ async function addTourToQueue(tour) {
 
 // Function to check and remove empty tours from queue
 async function cleanEmptyTours() {
-  const jobs = await tourQueue.getWaiting();
+  const jobs = await tourQueue.getCompleted();
   for (const job of jobs) {
     const tour = await prisma.tour.findUnique({
       where: { id: job.data.tourId },
@@ -80,6 +80,72 @@ async function peekNextTour() {
     };
   }
   return null;
+}
+
+async function getAllQueuedToursRemoving() {
+  const waitingJobs = await tourQueue.getWaiting();
+  const activeJobs = await tourQueue.getActive();
+  
+  // Combine and sort jobs
+  const allJobs = [...waitingJobs, ...activeJobs]
+    .sort((a, b) => a.opts.priority - b.opts.priority);
+  
+  // Map jobs to tour details
+  const queuedTours = await Promise.all(allJobs.map(async (job) => {
+    const tour = await prisma.tour.findUnique({
+      where: { id: job.data.tourId },
+      include: {
+        sessions: {
+          include: {
+            team: true
+          }
+        }
+      }
+    });
+    
+    return {
+      jobId: job.id,
+      tourId: job.data.tourId,
+      timestamp: new Date(job.data.timestamp),
+      priority: job.opts.priority,
+      tourDetails: tour
+    };
+  }));
+
+  return queuedTours;
+}
+
+async function getAllQueuedTours() {
+  const jobs = await tourQueue.getJobs(['waiting', 'active', 'delayed', 'completed']);
+ 
+  // Safely sort jobs by priority without modifying the queue
+  const sortedJobs = [...jobs]
+    .sort((a, b) => a.opts.priority - b.opts.priority);
+ 
+  // Map jobs to tour details
+  const queuedTours = await Promise.all(sortedJobs.map(async (job) => {
+    const tour = await prisma.tour.findUnique({
+      where: { id: job.data.tourId },
+      include: {
+        sessions: {
+          include: {
+            team: true
+          }
+        }
+      }
+    });
+   
+    return {
+      jobId: job.id,
+      tourId: job.data.tourId,
+      timestamp: new Date(job.data.timestamp),
+      priority: job.opts.priority,
+      state: job.state,
+      tourDetails: tour
+    };
+  }));
+
+  return queuedTours;
 }
 
 // Error handling
@@ -145,5 +211,6 @@ export {
   peekNextTour,
   cleanEmptyTours,
   displayTourQueueStatus,
+  getAllQueuedTours,
   runTourCleanup
 };

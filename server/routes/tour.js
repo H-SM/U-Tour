@@ -10,6 +10,7 @@ import {
   peekNextTour, 
   cleanEmptyTours, 
   displayTourQueueStatus,
+  getAllQueuedTours,
   tourQueue
 } from "./../queues/tourQueue.js"; 
 
@@ -102,6 +103,35 @@ router.get("/next-tour", async (req, res) => {
   } catch (error) {
     console.error("Error fetching next tour:", error);
     res.status(500).json({ error: "Failed to fetch next tour" });
+  }
+});
+
+// Route to get next tour by priority (without removing)
+router.get("/next-tour-priority", async (req, res) => {
+  try {
+    const queuedTours = await getAllQueuedTours();
+    
+    if (queuedTours.length === 0) {
+      return res.status(404).json({ message: "No tours in queue" });
+    }
+    
+    // Return the first (highest priority) tour
+    res.json(queuedTours[0]);
+  } catch (error) {
+    console.error("Error fetching next tour by priority:", error);
+    res.status(500).json({ error: "Failed to fetch next tour" });
+  }
+});
+
+
+// Route to get all queued tours
+router.get("/queued-tours", async (req, res) => {
+  try {
+    const queuedTours = await getAllQueuedTours();
+    res.json(queuedTours);
+  } catch (error) {
+    console.error("Error fetching queued tours:", error);
+    res.status(500).json({ error: "Failed to fetch queued tours" });
   }
 });
 
