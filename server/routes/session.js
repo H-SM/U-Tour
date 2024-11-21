@@ -6,6 +6,7 @@ import { generateCustomId } from "./../utils/idGenerator.js";
 import { htmlTemplate } from "./../templates/template.js";
 import sgMail from "@sendgrid/mail";
 import { manageTourForSession } from "./tour.js";
+import { removeEmptyTours } from "../queues/tourQueue.js";
 const router = express.Router(); // Create router correctly
 const prisma = new PrismaClient();
 
@@ -33,10 +34,14 @@ router.post("/create", async (req, res) => {
     } = req.body;
 
     const sessionTimestamp = new Date(departureTime);
-    const hourStart = new Date(sessionTimestamp.getFullYear(), 
-    sessionTimestamp.getMonth(), 
-    sessionTimestamp.getDate(), 
-    sessionTimestamp.getHours(), 0, 0);
+    const hourStart = new Date(
+      sessionTimestamp.getFullYear(),
+      sessionTimestamp.getMonth(),
+      sessionTimestamp.getDate(),
+      sessionTimestamp.getHours(),
+      0,
+      0
+    );
 
     // Check existing tours for this hour
     const existingTour = await prisma.tour.findFirst({
@@ -50,8 +55,8 @@ router.post("/create", async (req, res) => {
     const totalCurrentSize = existingTour ? existingTour.totalSize : 0;
 
     if (existingTour && totalCurrentSize + sessionTeamSize > 10) {
-      return res.status(400).json({ 
-        error: "This hour is fully booked. No more sessions can be added." 
+      return res.status(400).json({
+        error: "This hour is fully booked. No more sessions can be added.",
       });
     }
 
@@ -285,37 +290,39 @@ router.patch("/:sessionId/state", async (req, res) => {
       return res.status(400).json({ error: "Invalid session state" });
     }
 
-    if (state === "CANCEL") {
-      // First, find the session with its tour and team details
-      const session = await prisma.session.findUnique({
-        where: { id: sessionId },
-        include: { 
-          tour: true,
-          team: true 
-        }
-      });
+    // Find the session first to ensure we have the tourId
+    const session = await prisma.session.findUnique({
+      where: { id: sessionId },
+      include: {
+        tour: true,
+        team: true,
+      },
+    });
 
-      if (!session || !session.tourId) {
-        return res.status(404).json({ error: "Session or Tour not found" });
-      }
+    if (!session) {
+      return res.status(404).json({ error: "Session not found" });
+    }
 
+    if (state === "CANCEL" && session.tourId) {
       // Calculate the size to remove (team size or 1 for individual)
       const sizeToRemove = session.team ? session.team.size : 1;
 
-      // Update the tour: remove session and reduce total size
-      await prisma.tour.update({
-        where: { id: session.tourId },
-        data: {
-          totalSize: {
-            decrement: sizeToRemove
+      // Update the tour: remove session and reduce total size & remove empty tours
+      await Promise.all([
+        prisma.tour.update({
+          where: { id: session.tourId },
+          data: {
+            totalSize: {
+              decrement: sizeToRemove,
+            },
+            sessions: {
+              disconnect: { id: sessionId },
+            },
           },
-          sessions: {
-            disconnect: { id: sessionId }
-          }
-        }
-      });
+        }),
+        removeEmptyTours(),
+      ]);
     }
-
     // Update the session state
     const updatedSession = await prisma.session.update({
       where: { id: sessionId },

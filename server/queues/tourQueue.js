@@ -82,6 +82,127 @@ async function peekNextTour() {
   return null;
 }
 
+// remove empty tours from the queue
+async function removeEmptyTours() {
+  try {
+    const jobs = await tourQueue.getJobs([
+      "waiting", 
+      "active", 
+      "delayed", 
+      "completed"
+    ]);
+
+    for (const job of jobs) {
+      const tour = await prisma.tour.findUnique({
+        where: { id: job.data.tourId },
+        include: { sessions: true }
+      });
+
+      // Remove tour if it has no sessions
+      if (!tour || tour.sessions.length === 0) {
+        await job.remove();
+        console.log(`Removed empty tour ${tour.id} from queue`);
+        if (tour) {
+          await prisma.tour.delete({
+            where: { id: tour.id }
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error removing empty tours:", error);
+  }
+}
+
+// New function to handle expired tours
+async function processExpiredTours() {
+  try {
+    const currentTime = new Date();
+    const jobs = await tourQueue.getJobs([
+      "waiting", 
+      "active", 
+      "delayed", 
+      "completed"
+    ]);
+
+    for (const job of jobs) {
+      const jobTimestamp = new Date(job.data.timestamp);
+      
+      // Check if tour is expired
+      if (jobTimestamp < currentTime) {
+        const tour = await prisma.tour.findUnique({
+          where: { id: job.data.tourId },
+          include: { sessions: true }
+        });
+
+        if (tour) {
+          // Update all associated sessions
+          await prisma.session.updateMany({
+            where: { tourId: tour.id },
+            data: { 
+              state: "CANCEL",
+              message: "The session wasn't able to get queued, it missed the timeline. Please try making another session"
+            }
+          });
+          console.log(`Expired tour ${tour.id} removed from queue`);
+          // Remove the job from the queue
+          await job.remove();
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error processing expired tours:", error);
+  }
+}
+
+// New function to pop the top tour from the queue
+async function popTopTourFromQueue() {
+  try {
+    // Get all jobs sorted by priority
+    const jobs = await tourQueue.getJobs([
+      "waiting", 
+      "active", 
+      "delayed", 
+      "completed"
+    ]);
+
+    // Sort jobs by priority (timestamp)
+    const sortedJobs = jobs.sort((a, b) => a.opts.priority - b.opts.priority);
+
+    if (sortedJobs.length === 0) {
+      return null;
+    }
+
+    // Get the top job
+    const topJob = sortedJobs[0];
+    
+    // Fetch complete tour details
+    const tour = await prisma.tour.findUnique({
+      where: { id: topJob.data.tourId },
+      include: {
+        sessions: {
+          include: {
+            team: true
+          }
+        }
+      }
+    });
+
+    // Remove the job from the queue
+    await topJob.remove();
+
+    return {
+      jobId: topJob.id,
+      tourId: topJob.data.tourId,
+      timestamp: new Date(topJob.data.timestamp),
+      tourDetails: tour
+    };
+  } catch (error) {
+    console.error("Error popping top tour from queue:", error);
+    return null;
+  }
+}
+
 async function getAllQueuedToursRemoving() {
   const waitingJobs = await tourQueue.getWaiting();
   const activeJobs = await tourQueue.getActive();
@@ -268,4 +389,7 @@ export {
   getAllQueuedTours,
   getAllQueuedToursConcise,
   runTourCleanup,
+  removeEmptyTours,
+  processExpiredTours,
+  popTopTourFromQueue
 };

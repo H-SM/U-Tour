@@ -12,7 +12,10 @@ import {
   displayTourQueueStatus,
   getAllQueuedTours,
   getAllQueuedToursConcise,
-  tourQueue
+  tourQueue,
+  removeEmptyTours,
+  processExpiredTours,
+  popTopTourFromQueue
 } from "./../queues/tourQueue.js"; 
 
 // Create a new tour or add session to existing tour
@@ -67,6 +70,7 @@ async function manageTourForSession(session) {
         id: generateCustomId(),
         timestamp: hourStart,
         totalSize: sessionTeamSize,
+        state: session.state,
         to: session.to,
         from: session.from,
         sessions: {
@@ -129,6 +133,40 @@ router.get("/next-tour", async (req, res) => {
   } catch (error) {
     console.error("Error fetching next tour:", error);
     res.status(500).json({ error: "Failed to fetch next tour" });
+  }
+});
+
+// Add new routes to the existing router in your tours route file
+router.post("/remove-empty-tours", async (req, res) => {
+  try {
+    await removeEmptyTours();
+    res.json({ message: "Empty tours removed successfully" });
+  } catch (error) {
+    console.error("Error removing empty tours:", error);
+    res.status(500).json({ error: "Failed to remove empty tours" });
+  }
+});
+
+router.post("/process-expired-tours", async (req, res) => {
+  try {
+    await processExpiredTours();
+    res.json({ message: "Expired tours processed successfully" });
+  } catch (error) {
+    console.error("Error processing expired tours:", error);
+    res.status(500).json({ error: "Failed to process expired tours" });
+  }
+});
+
+router.post("/pop-top-tour", async (req, res) => {
+  try {
+    const topTour = await popTopTourFromQueue();
+    if (!topTour) {
+      return res.status(404).json({ message: "No tours in queue" });
+    }
+    res.json(topTour);
+  } catch (error) {
+    console.error("Error popping top tour:", error);
+    res.status(500).json({ error: "Failed to pop top tour" });
   }
 });
 
