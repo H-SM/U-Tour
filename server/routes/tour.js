@@ -70,7 +70,6 @@ async function manageTourForSession(session) {
         id: generateCustomId(),
         timestamp: hourStart,
         totalSize: sessionTeamSize,
-        state: session.state,
         to: session.to,
         from: session.from,
         sessions: {
