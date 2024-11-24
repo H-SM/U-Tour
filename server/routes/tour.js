@@ -4,19 +4,31 @@ import { generateCustomId } from "./../utils/idGenerator.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
+import admin from 'firebase-admin';
 
-import { 
-  addTourToQueue, 
-  peekNextTour, 
-  cleanEmptyTours, 
+import {
+  addTourToQueue,
+  peekNextTour,
+  cleanEmptyTours,
   displayTourQueueStatus,
   getAllQueuedTours,
   getAllQueuedToursConcise,
   tourQueue,
   removeEmptyTours,
   processExpiredTours,
-  popTopTourFromQueue
-} from "./../queues/tourQueue.js"; 
+  popTopTourFromQueue,
+} from "./../queues/tourQueue.js";
+
+import sgMail from "@sendgrid/mail";
+import { htmlTemplate } from "../templates/template.js";
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+const formatLocation = (location) => {
+  return location
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
 
 // Create a new tour or add session to existing tour
 async function manageTourForSession(session) {
@@ -57,7 +69,7 @@ async function manageTourForSession(session) {
   //       },
   //     },
   //   });
-    
+
   //   // Add tour to queue
   //   await addTourToQueue(tour);
   //   return tour.id;
@@ -77,7 +89,7 @@ async function manageTourForSession(session) {
         },
       },
     });
-    
+
     // Add tour to queue
     await addTourToQueue(tour);
   } else {
@@ -85,7 +97,7 @@ async function manageTourForSession(session) {
     throw new Error(
       "This hour is fully booked. No more sessions can be added."
     );
-  } 
+  }
 
   // if (!tour) {
   //   tour = await prisma.tour.create({
@@ -98,7 +110,7 @@ async function manageTourForSession(session) {
   //       },
   //     },
   //   });
-    
+
   //   // Add tour to queue
   //   await addTourToQueue(tour);
   // } else if (totalCurrentSize + sessionTeamSize > 10) {
@@ -120,6 +132,173 @@ async function manageTourForSession(session) {
   // }
   return tour.id;
 }
+
+// Route to process next tour and update session states
+router.post("/pop-tour", async (req, res) => {
+  try {
+    const { state, message } = req.body;
+    if (!["ACTIVE", "CANCEL"].includes(state)) {
+      return res.status(400).json({
+        error: "Invalid state. Must be either 'ACTIVE' or 'CANCEL'",
+      });
+    }
+
+    let customMessage = message;
+    if (state === "CANCEL" && !customMessage) {
+      customMessage = "Robot was under maintenance, please try making another booking.";
+    }
+
+    const topTour = await popTopTourFromQueue();
+    if (!topTour) {
+      return res.status(404).json({ message: "No tours in queue" });
+    }
+
+    // Update all sessions in the tour with the new state
+    await prisma.session.updateMany({
+      where: { tourId: topTour.tourId },
+      data: {
+        state,
+        ...(customMessage && { message: customMessage }),
+      },
+    });
+
+    // If state is ACTIVE, send email notifications to all users in the tour
+    if (state === "ACTIVE") {
+      const sessions = await prisma.session.findMany({
+        where: { tourId: topTour.tourId },
+        include: {
+          team: true,
+        },
+      });
+    
+      // Send emails to all session users
+      const emailPromises = sessions.map(async (session) => {
+        let userEmail, userName;
+        try {
+          const userRecord = await admin.auth().getUser(session.userId);
+          userEmail = userRecord.email;
+          userName = userRecord.displayName;
+        } catch (firebaseError) {
+          const prismaUser = await prisma.user.findUnique({
+            where: { id: session.userId }
+          });
+          if (!prismaUser) {
+            console.error(`User not found for session ${session.id}`);
+            return;
+          }
+          userEmail = prismaUser.email;
+          userName = prismaUser.displayName;
+        }
+    
+        // Format the date and time
+        const departureTime = new Date(session.departureTime);
+        const formattedTime = departureTime.toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+    
+        // Create dynamic email data
+        const emailData = {
+          name: userName || 'Valued Customer',
+          to_location: formatLocation(session.to),
+          from_location: formatLocation(session.from),
+          departure_time: formattedTime,
+          tour_type: session.tourType || 'Standard Tour',
+          role: "Please reach the starting point.",
+          additional_info: "Please arrive 5 minutes before your scheduled departure time. Your robot guide will be waiting at the starting location."
+        };
+        
+        //TODO: MAIL SYSTEM IS FAILING - HAVE TO FIX
+        const msg = {
+          to: userEmail,
+          from: process.env.SENDGRID_SENDER,
+          subject: "Your U Robot Tour Guide Session is Starting!",
+          html: htmlTemplate,
+          dynamicTemplateData: emailData,  // Use dynamicTemplateData instead of substitutions
+          templateId: process.env.SENDGRID_TEMPLATE_ID, // Make sure to set this in your env
+        };
+    
+        try {
+          await sgMail.send(msg);
+          console.log(`Email sent successfully to ${userEmail}`);
+        } catch (emailError) {
+          console.error(
+            `Failed to send email for session ${session.id}:`,
+            emailError.response?.body?.errors || emailError
+          );
+        }
+      });
+    
+      // Wait for all emails to be sent
+      await Promise.all(emailPromises);
+    }
+
+    res.json({
+      message: `Tour ${topTour.tourId} processed successfully`,
+      updatedState: state,
+      tour: topTour,
+    });
+  } catch (error) {
+    console.error("Error processing next tour:", error);
+    res.status(500).json({ error: "Failed to process next tour" });
+  }
+});
+
+// Route to update all session states for a specific tour
+router.patch("/:tourId/sessions", async (req, res) => {
+  try {
+    const { tourId } = req.params;
+    const { state, message } = req.body;
+
+    if (!["DONE", "ACTIVE", "QUEUED", "CANCEL", "ERROR"].includes(state)) {
+      return res.status(400).json({
+        error: "Invalid session state",
+      });
+    }
+
+    // First verify the tour exists
+    const tour = await prisma.tour.findUnique({
+      where: { id: tourId },
+      include: { sessions: true },
+    });
+
+    if (!tour) {
+      return res.status(404).json({
+        error: "Tour not found",
+      });
+    }
+
+    // Update all sessions for this tour
+    const updatedSessions = await prisma.session.updateMany({
+      where: { tourId },
+      data: {
+        state,
+        ...(message && { message }),
+      },
+    });
+
+    // If the state is CANCEL, we might want to remove the tour from the queue
+    if (state === "CANCEL") {
+      await removeEmptyTours();
+    }
+
+    res.json({
+      message: `Updated ${updatedSessions.count} sessions for tour ${tourId}`,
+      tourId,
+      newState: state,
+      updatedCount: updatedSessions.count,
+    });
+  } catch (error) {
+    console.error("Error updating tour sessions:", error);
+    res.status(500).json({
+      error: "Failed to update tour sessions",
+    });
+  }
+});
 
 // New route to get next tour in queue
 router.get("/next-tour", async (req, res) => {
@@ -173,11 +352,11 @@ router.post("/pop-top-tour", async (req, res) => {
 router.get("/next-tour-priority", async (req, res) => {
   try {
     const queuedTours = await getAllQueuedTours();
-    
+
     if (queuedTours.length === 0) {
       return res.status(404).json({ message: "No tours in queue" });
     }
-    
+
     // Return the first (highest priority) tour
     res.json(queuedTours[0]);
   } catch (error) {
@@ -185,7 +364,6 @@ router.get("/next-tour-priority", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch next tour" });
   }
 });
-
 
 // Route to get all queued tours
 router.get("/queued-tours", async (req, res) => {
@@ -211,10 +389,32 @@ router.get("/queued-tours-concise", async (req, res) => {
 // Route to clean up empty tours
 router.post("/cleanup", async (req, res) => {
   try {
-    await cleanEmptyTours();
-    res.json({ message: "Tour cleanup completed" });
+    const startTime = new Date();
+    console.log(`[${startTime.toISOString()}] Starting daily tour cleanup`);
+
+    // Run cleanup tasks
+    const emptyToursResult = await cleanEmptyTours();
+    console.log(`[${new Date().toISOString()}] Cleaned empty tours:`, emptyToursResult);
+
+    const expiredToursResult = await processExpiredTours();
+    console.log(`[${new Date().toISOString()}] Processed expired tours:`, expiredToursResult);
+
+    const endTime = new Date();
+    const duration = endTime - startTime;
+
+    console.log(`[${endTime.toISOString()}] Cleanup completed in ${duration}ms`);
+
+    res.json({
+      message: "Tour cleanup completed",
+      timestamp: endTime.toISOString(),
+      duration: `${duration}ms`,
+      details: {
+        emptyToursResult,
+        expiredToursResult
+      }
+    });
   } catch (error) {
-    console.error("Error during tour cleanup:", error);
+    console.error(`[${new Date().toISOString()}] Error during tour cleanup:`, error);
     res.status(500).json({ error: "Failed to clean up tours" });
   }
 });
