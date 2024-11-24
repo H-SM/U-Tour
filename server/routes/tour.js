@@ -387,31 +387,27 @@ router.get("/queued-tours-concise", async (req, res) => {
 });
 
 // Route to clean up empty tours
-router.post("/cleanup", async (req, res) => {
+router.get("/cleanup", async (req, res) => {
   try {
     const startTime = new Date();
     console.log(`[${startTime.toISOString()}] Starting daily tour cleanup`);
 
     // Run cleanup tasks
-    const emptyToursResult = await cleanEmptyTours();
-    console.log(`[${new Date().toISOString()}] Cleaned empty tours:`, emptyToursResult);
+    await cleanEmptyTours();
+    console.log(`[${new Date().toISOString()}] Cleaned empty tours`);
 
-    const expiredToursResult = await processExpiredTours();
-    console.log(`[${new Date().toISOString()}] Processed expired tours:`, expiredToursResult);
+    await processExpiredTours();
+    console.log(`[${new Date().toISOString()}] Processed expired tours`);
 
     const endTime = new Date();
     const duration = endTime - startTime;
 
     console.log(`[${endTime.toISOString()}] Cleanup completed in ${duration}ms`);
 
-    res.json({
+    res.json({  
       message: "Tour cleanup completed",
       timestamp: endTime.toISOString(),
-      duration: `${duration}ms`,
-      details: {
-        emptyToursResult,
-        expiredToursResult
-      }
+      duration: `${duration}ms`
     });
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Error during tour cleanup:`, error);
