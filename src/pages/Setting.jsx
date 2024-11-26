@@ -5,7 +5,7 @@ import {
   updateEmail,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "../firebase/config";
 import ContextValue from "../context/EventContext";
@@ -13,15 +13,19 @@ import { useNavigate } from "react-router-dom";
 import useFirebaseAuth from "../hooks/useFirebaseAuth";
 import SideNavbar from "../components/SideNavbar";
 import Navbar from "../components/Navbar";
-import { SendHorizontal } from "lucide-react";
+import { SendHorizontal, UserCircleIcon } from "lucide-react";
+import CloudinaryUploadWidget from "../components/Settings/CloudinaryUpload";
 
 const Setting = ({ isExpanded, setIsExpanded, showAlert }) => {
-  const { userDetailsFirebase, setUserDetailsFirebase } = useContext(ContextValue);
+  const { userDetailsFirebase, setUserDetailsFirebase } =
+    useContext(ContextValue);
   const { checkAuth, signOutUser, forgotPassword } = useFirebaseAuth();
   const navigate = useNavigate();
 
   // Form states
-  const [displayName, setDisplayName] = useState(userDetailsFirebase?.displayName || "");
+  const [displayName, setDisplayName] = useState(
+    userDetailsFirebase?.displayName || ""
+  );
   const [email, setEmail] = useState(userDetailsFirebase?.email || "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -198,13 +202,29 @@ const Setting = ({ isExpanded, setIsExpanded, showAlert }) => {
                   <label className="block text-sm font-medium text-white mb-1">
                     Profile Picture URL
                   </label>
-                  <input
+                  <div className="mt-2 flex items-center justify-center gap-x-8">
+                    {photoURL ? (
+                      <img
+                        src={photoURL}
+                        className="w-[15vh] rounded-full"
+                        alt="pfp"
+                      />
+                    ) : (
+                      <UserCircleIcon
+                        className="h-[15vh] w-[15vh] text-cyan-600"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <CloudinaryUploadWidget showAlert={showAlert} setPhotoURL={setPhotoURL}/>
+                  </div>
+                  {/* <input
                     type="url"
                     value={photoURL}
                     onChange={(e) => setPhotoURL(e.target.value)}
                     className="w-full p-2 rounded bg-white/5 border border-white/20 text-white"
-                  />
+                  /> */}
                 </div>
+
                 <button
                   type="submit"
                   disabled={loading}
