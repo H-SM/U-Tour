@@ -7,16 +7,15 @@ import { htmlTemplate } from "./../templates/template.js";
 import sgMail from "@sendgrid/mail";
 import { manageTourForSession } from "./tour.js";
 import { removeEmptyTours } from "../queues/tourQueue.js";
+import { locations } from "../utils/constant.js";
 const router = express.Router(); // Create router correctly
 const prisma = new PrismaClient();
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const formatLocation = (location) => {
-  return location
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+const formatLocation = (locationValue) => {
+  const foundLocation = locations.find(location => location.value === locationValue);
+  return foundLocation ? foundLocation.label : locationValue;
 };
 
 // Route to create a new session

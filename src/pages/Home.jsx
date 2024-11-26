@@ -7,6 +7,7 @@ import MapSection from "../components/Home/MapSection";
 import Navbar from "../components/Navbar";
 import InputForm from "../components/Home/InputForm";
 import SideNavbar from "../components/SideNavbar";
+import { locations } from "../common/constant";
 
 const Dashboard = ({ showAlert, isExpanded, setIsExpanded }) => {
   const navigate = useNavigate();
@@ -25,13 +26,6 @@ const Dashboard = ({ showAlert, isExpanded, setIsExpanded }) => {
     teamSize: 1,
     teamNotes: "",
   });
-
-  const locations = [
-    { value: "Bidholi-magic-stand", label: "Main Gate" },
-    { value: "hubble", label: "The Hubble" },
-    { value: "aditya-block", label: "Aditya Block" },
-    { value: "upes-cricket-ground", label: "Cricket Ground" },
-  ];
 
   const logoutUser = () => {
     signOutUser();

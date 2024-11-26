@@ -21,15 +21,13 @@ import {
 
 import sgMail from "@sendgrid/mail";
 import { htmlTemplate } from "../templates/template.js";
+import { locations } from "../utils/constant.js";
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const formatLocation = (location) => {
-  return location
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+const formatLocation = (locationValue) => {
+  const foundLocation = locations.find(location => location.value === locationValue);
+  return foundLocation ? foundLocation.label : locationValue;
 };
-
 // Create a new tour or add session to existing tour
 async function manageTourForSession(session) {
   const sessionTimestamp = new Date(session.departureTime);

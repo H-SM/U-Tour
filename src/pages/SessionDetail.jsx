@@ -8,6 +8,7 @@ import useFirebaseAuth from "../hooks/useFirebaseAuth";
 import Loader from "../components/Loader";
 import { Check, Share2, User } from "lucide-react";
 import Modal from "../components/Modal";
+import { locations } from "../common/constant";
 
 const SessionDetail = ({ isExpanded, setIsExpanded }) => {
   const { sessionId } = useParams();
@@ -117,6 +118,14 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
       month: "long",
       year: "numeric",
     });
+  };
+
+  const formatLocation = (locationValue) => {
+    const foundLocation = locations.find(
+      (location) => location.value === locationValue
+    );
+    return (foundLocation ? foundLocation.label : locationValue).replace(/-/g, " ")
+    .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   const formatTime = (dateString) => {
@@ -337,9 +346,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                         <div>
                           <div className="text-gray-200 text-md">From</div>
                           <div className="font-bold">
-                            {session.from
-                              .replace(/-/g, " ")
-                              .replace(/\b\w/g, (l) => l.toUpperCase())}
+                            {formatLocation(session.from)}
                           </div>
                         </div>
                       </div>
@@ -375,9 +382,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                         <div>
                           <div className="text-gray-200 text-md">To</div>
                           <div className="font-bold">
-                            {session.to
-                              .replace(/-/g, " ")
-                              .replace(/\b\w/g, (l) => l.toUpperCase())}
+                            {formatLocation(session.to)}
                           </div>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import Bull from "bull";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
+import { locations } from "../utils/constant.js"; 
 
 dotenv.config();
 const prisma = new PrismaClient();
@@ -280,11 +281,9 @@ async function getAllQueuedTours() {
   return queuedTours;
 }
 
-const formatLocation = (location) => {
-  return location
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+const formatLocation = (locationValue) => {
+  const foundLocation = locations.find(location => location.value === locationValue);
+  return foundLocation ? foundLocation.label : locationValue;
 };
 
 async function getAllQueuedToursConcise() {

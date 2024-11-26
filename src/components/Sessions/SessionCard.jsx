@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Clock, MapPin, User, AlertCircle } from "lucide-react";
 import Modal from "../Modal";
 import { useNavigate } from "react-router-dom";
+import { locations } from "../../common/constant";
 
 const SessionCard = ({ session }) => {
   const [loading, setLoading] = useState(false);
@@ -44,11 +45,11 @@ const SessionCard = ({ session }) => {
     }
   };
 
-  const formatLocation = (location) => {
-    return location
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
+  const formatLocation = (locationValue) => {
+    const foundLocation = locations.find(
+      (location) => location.value === locationValue
+    );
+    return foundLocation ? foundLocation.label : locationValue;
   };
 
   const handleCancelSession = async () => {

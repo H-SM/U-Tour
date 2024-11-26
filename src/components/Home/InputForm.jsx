@@ -10,23 +10,7 @@ import { MapPin, Clock, Mail, Users, User, Search, X } from "lucide-react";
 import SearchUser from "./SearchUser";
 import debounce from "lodash/debounce";
 import { useNavigate } from "react-router-dom";
-
-const FIXED_HOURS = [
-  // { value: "05:00", label: "5 AM" },
-  // { value: "06:00", label: "6 AM" },
-  // { value: "07:00", label: "7 AM" },
-  // { value: "08:00", label: "8 AM" },
-  { value: "09:00", label: "9 AM" },
-  { value: "10:00", label: "10 AM" },
-  { value: "11:00", label: "11 AM" },
-  { value: "12:00", label: "12 PM" },
-  { value: "13:00", label: "1 PM" },
-  { value: "14:00", label: "2 PM" },
-  { value: "15:00", label: "3 PM" },
-  { value: "16:00", label: "4 PM" },
-  { value: "17:00", label: "5 PM" },
-  // { value: "18:00", label: "6 PM" },
-];
+import { FIXED_HOURS } from "../../common/constant";
 
 const InputForm = ({
   handleInputChange,
