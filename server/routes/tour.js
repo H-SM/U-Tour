@@ -60,7 +60,7 @@ async function manageTourForSession(session) {
       timestamp: sessionTimestamp,
     },
     include: {
-      sessions: true, 
+      sessions: true,
     },
   });
 
@@ -154,20 +154,17 @@ router.post("/pop-tour", async (req, res) => {
         error: "Invalid state. Must be either 'ACTIVE' or 'CANCEL'",
       });
     }
-
     let customMessage = message;
-    if (state === "CANCEL" && !customMessage) {
+    if (state == "CANCEL" && !customMessage) {
       customMessage =
         "Robot was under maintenance, please try making another booking.";
     }
-
     const topTour = await popTopTourFromQueue();
     if (!topTour) {
       return res.status(404).json({ message: "No tours in queue" });
     }
-
-    // Update all sessions in the tour with the new state
-    await prisma.session.updateMany({
+    // Update sessions and get the updated sessions in one operation
+    const updateResult = await prisma.session.updateMany({
       where: { tourId: topTour.tourId },
       data: {
         state,
@@ -176,9 +173,13 @@ router.post("/pop-tour", async (req, res) => {
     });
 
     // If state is ACTIVE, send email notifications to all users in the tour
-    if (state === "ACTIVE") {
+    if (state == "ACTIVE") {
+      // Fetch sessions with updated state directly
       const sessions = await prisma.session.findMany({
-        where: { tourId: topTour.tourId },
+        where: { 
+          tourId: topTour.tourId,
+          state: "ACTIVE" 
+        },
         include: {
           team: true,
         },
@@ -202,7 +203,6 @@ router.post("/pop-tour", async (req, res) => {
           userEmail = prismaUser.email;
           userName = prismaUser.displayName;
         }
-
         // Format the date and time
         const departureTime = new Date(session.departureTime);
         const formattedTime = departureTime.toLocaleString("en-US", {
@@ -213,48 +213,41 @@ router.post("/pop-tour", async (req, res) => {
           hour: "2-digit",
           minute: "2-digit",
         });
-
-        // Create dynamic email data
         const emailData = {
-          name: userName || "Valued Customer",
-          to_location: formatLocation(session.to),
-          from_location: formatLocation(session.from),
-          departure_time: formattedTime,
-          tour_type: session.tourType || "Standard Tour",
-          role: "Please reach the starting point.",
-          additional_info:
-            "Please arrive 5 minutes before your scheduled departure time. Your robot guide will be waiting at the starting location.",
+          To: formatLocation(session.to),
+          From: formatLocation(session.from),
+          Time: formattedTime,
+          TourType: session.tourType || "Standard Tour",
         };
-
-        //TODO: MAIL SYSTEM IS FAILING - HAVE TO FIX
-        const msg = {
-          to: userEmail,
+        const combinedMsg = {
+          personalizations: [
+            {
+              to: [{ email: userEmail }],
+              substitutions: {
+                ...emailData,
+                Name: userName || "Valued Customer",
+                Email: userEmail,
+                Role: "Please reach the starting point.",
+                AdditionalInfo:
+                  "Please arrive 5 minutes before your scheduled departure time. Your robot guide will be waiting at the starting location.",
+              },
+            },
+          ],
           from: process.env.SENDGRID_SENDER,
           subject: "Your U Robot Tour Guide Session is Starting!",
           html: htmlTemplate,
-          dynamicTemplateData: emailData, // Use dynamicTemplateData instead of substitutions
-          templateId: process.env.SENDGRID_TEMPLATE_ID, // Make sure to set this in your env
         };
-
-        try {
-          await sgMail.send(msg);
-          console.log(`Email sent successfully to ${userEmail}`);
-        } catch (emailError) {
-          console.error(
-            `Failed to send email for session ${session.id}:`,
-            emailError.response?.body?.errors || emailError
-          );
-        }
+        await sgMail.send(combinedMsg);
+        console.log(`Email sent successfully to ${userEmail}`);
       });
-
       // Wait for all emails to be sent
       await Promise.all(emailPromises);
     }
-
     res.json({
       message: `Tour ${topTour.tourId} processed successfully`,
       updatedState: state,
       tour: topTour,
+      updatedCount: updateResult.count, // Number of sessions updated
     });
   } catch (error) {
     console.error("Error processing next tour:", error);
@@ -491,7 +484,7 @@ router.post("/booked-hours", async (req, res) => {
     const inputDate = new Date(date);
     console.log(inputDate);
     const istDate = new Date(inputDate);
-    
+
     // Set to start of day in IST
     istDate.setHours(0, 0, 0, 0);
 
@@ -511,8 +504,10 @@ router.post("/booked-hours", async (req, res) => {
     console.log(tours);
     const bookedHoursWithSize = tours.map((tour) => {
       // Convert tour timestamp to IST
-      const istTourTimestamp = new Date(tour.timestamp.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
-      
+      const istTourTimestamp = new Date(
+        tour.timestamp.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+      );
+
       return {
         hour: istTourTimestamp.getHours(),
         totalSize: tour.totalSize,
