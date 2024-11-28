@@ -24,6 +24,7 @@ const InputForm = ({
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoadingHours, setIsLoadingHours] = useState(false);
   const [activeSearchField, setActiveSearchField] = useState(null);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const nameSearchRef = useRef(null);
@@ -259,7 +260,7 @@ const InputForm = ({
   useEffect(() => {
     const fetchBookedHours = async () => {
       if (!bookingData.departureDate) return;
-
+      setIsLoadingHours(true);
       try {
         const response = await fetch(
           `${process.env.REACT_APP_API_URL}/tours/booked-hours`,
@@ -281,6 +282,8 @@ const InputForm = ({
       } catch (error) {
         console.error("Error fetching booked hours:", error);
         showAlert("Failed to fetch available hours", "error");
+      } finally {
+        setIsLoadingHours(false);
       }
     };
 
@@ -552,6 +555,7 @@ const InputForm = ({
             <label className="text-white text-sm font-medium">
               Departure Time
             </label>
+            {!isLoadingHours ?
             <select
               name="departureTime"
               value={bookingData.departureTime}
@@ -566,6 +570,11 @@ const InputForm = ({
                 </option>
               ))}
             </select>
+            : (
+              <div className="w-full flex justify-center items-center bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white disabled:opacity-60 h-[2.6rem]">
+                <div className="w-4 h-4 border-2 border-t-2 border-white/30 border-t-white/70 rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
         </div>
 

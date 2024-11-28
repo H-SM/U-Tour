@@ -45,22 +45,22 @@ const convertToIST = (date) => {
 // Create a new tour or add session to existing tour
 async function manageTourForSession(session) {
   const sessionTimestamp = new Date(session.departureTime);
-  const hourStart = new Date(
-    sessionTimestamp.getFullYear(),
-    sessionTimestamp.getMonth(),
-    sessionTimestamp.getDate(),
-    sessionTimestamp.getHours(),
-    0,
-    0
-  );
+  // const hourStart = new Date(
+  //   sessionTimestamp.getFullYear(),
+  //   sessionTimestamp.getMonth(),
+  //   sessionTimestamp.getDate(),
+  //   sessionTimestamp.getHours(),
+  //   0,
+  //   0
+  // );
 
   // Check if a tour exists for this timestamp
   let tour = await prisma.tour.findFirst({
     where: {
-      timestamp: hourStart,
+      timestamp: sessionTimestamp,
     },
     include: {
-      sessions: true,
+      sessions: true, 
     },
   });
 
@@ -92,7 +92,7 @@ async function manageTourForSession(session) {
     tour = await prisma.tour.create({
       data: {
         id: generateCustomId(),
-        timestamp: hourStart,
+        timestamp: sessionTimestamp,
         totalSize: sessionTeamSize,
         to: session.to,
         from: session.from,
