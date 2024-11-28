@@ -186,12 +186,14 @@ const InputForm = ({
     try {
       // Convert time string to full ISO date string using the selected date
       const [hours, minutes] = bookingData.departureTime.split(":");
+      console.log(hours, minutes);
       const departureDate = new Date(bookingData.departureDate);
       departureDate.setHours(parseInt(hours, 10));
       departureDate.setMinutes(parseInt(minutes, 10));
       departureDate.setSeconds(0);
       departureDate.setMilliseconds(0);
 
+      console.log(departureDate, departureDate.toISOString());
       const sessionData = {
         bookingUserId: userDetailsFirebase.uid,
         userEmail: bookingData.email,

@@ -110,13 +110,35 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
     return <div className="p-8 text-center text-red-500">Error: {error}</div>;
   }
 
+  // Utility function to convert and format date in IST
   const formatDate = (dateString) => {
+    // Convert to IST
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      weekday: "short",
-      day: "numeric",
-      month: "long",
+    const istDate = new Date(
+      date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+
+    // Format date as "Month Day, Year"
+    return istDate.toLocaleDateString("en-IN", {
       year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  // Utility function to format time in IST
+  const formatTime = (dateString) => {
+    // Convert to IST
+    const date = new Date(dateString);
+    const istDate = new Date(
+      date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" })
+    );
+
+    // Format time in 12-hour format with AM/PM
+    return istDate.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
@@ -124,16 +146,9 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
     const foundLocation = locations.find(
       (location) => location.value === locationValue
     );
-    return (foundLocation ? foundLocation.label : locationValue).replace(/-/g, " ")
-    .replace(/\b\w/g, (l) => l.toUpperCase());
-  };
-
-  const formatTime = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return (foundLocation ? foundLocation.label : locationValue)
+      .replace(/-/g, " ")
+      .replace(/\b\w/g, (l) => l.toUpperCase());
   };
 
   const getStateColor = (state) => {

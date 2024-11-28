@@ -4,7 +4,7 @@ import { generateCustomId } from "./../utils/idGenerator.js";
 
 const router = express.Router();
 const prisma = new PrismaClient();
-import admin from 'firebase-admin';
+import admin from "firebase-admin";
 
 import {
   addTourToQueue,
@@ -25,9 +25,23 @@ import { locations } from "../utils/constant.js";
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const formatLocation = (locationValue) => {
-  const foundLocation = locations.find(location => location.value === locationValue);
+  const foundLocation = locations.find(
+    (location) => location.value === locationValue
+  );
   return foundLocation ? foundLocation.label : locationValue;
 };
+
+const convertToIST = (date) => {
+  // Create a new Date object to avoid mutating the original
+  const istDate = new Date(date);
+
+  // Assuming your server is in UTC, convert to IST (UTC+5:30)
+  istDate.setHours(istDate.getHours() + 5);
+  istDate.setMinutes(istDate.getMinutes() + 30);
+
+  return istDate;
+};
+
 // Create a new tour or add session to existing tour
 async function manageTourForSession(session) {
   const sessionTimestamp = new Date(session.departureTime);
@@ -143,7 +157,8 @@ router.post("/pop-tour", async (req, res) => {
 
     let customMessage = message;
     if (state === "CANCEL" && !customMessage) {
-      customMessage = "Robot was under maintenance, please try making another booking.";
+      customMessage =
+        "Robot was under maintenance, please try making another booking.";
     }
 
     const topTour = await popTopTourFromQueue();
@@ -168,7 +183,7 @@ router.post("/pop-tour", async (req, res) => {
           team: true,
         },
       });
-    
+
       // Send emails to all session users
       const emailPromises = sessions.map(async (session) => {
         let userEmail, userName;
@@ -178,7 +193,7 @@ router.post("/pop-tour", async (req, res) => {
           userName = userRecord.displayName;
         } catch (firebaseError) {
           const prismaUser = await prisma.user.findUnique({
-            where: { id: session.userId }
+            where: { id: session.userId },
           });
           if (!prismaUser) {
             console.error(`User not found for session ${session.id}`);
@@ -187,39 +202,40 @@ router.post("/pop-tour", async (req, res) => {
           userEmail = prismaUser.email;
           userName = prismaUser.displayName;
         }
-    
+
         // Format the date and time
         const departureTime = new Date(session.departureTime);
-        const formattedTime = departureTime.toLocaleString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
+        const formattedTime = departureTime.toLocaleString("en-US", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
         });
-    
+
         // Create dynamic email data
         const emailData = {
-          name: userName || 'Valued Customer',
+          name: userName || "Valued Customer",
           to_location: formatLocation(session.to),
           from_location: formatLocation(session.from),
           departure_time: formattedTime,
-          tour_type: session.tourType || 'Standard Tour',
+          tour_type: session.tourType || "Standard Tour",
           role: "Please reach the starting point.",
-          additional_info: "Please arrive 5 minutes before your scheduled departure time. Your robot guide will be waiting at the starting location."
+          additional_info:
+            "Please arrive 5 minutes before your scheduled departure time. Your robot guide will be waiting at the starting location.",
         };
-        
+
         //TODO: MAIL SYSTEM IS FAILING - HAVE TO FIX
         const msg = {
           to: userEmail,
           from: process.env.SENDGRID_SENDER,
           subject: "Your U Robot Tour Guide Session is Starting!",
           html: htmlTemplate,
-          dynamicTemplateData: emailData,  // Use dynamicTemplateData instead of substitutions
+          dynamicTemplateData: emailData, // Use dynamicTemplateData instead of substitutions
           templateId: process.env.SENDGRID_TEMPLATE_ID, // Make sure to set this in your env
         };
-    
+
         try {
           await sgMail.send(msg);
           console.log(`Email sent successfully to ${userEmail}`);
@@ -230,7 +246,7 @@ router.post("/pop-tour", async (req, res) => {
           );
         }
       });
-    
+
       // Wait for all emails to be sent
       await Promise.all(emailPromises);
     }
@@ -400,15 +416,20 @@ router.get("/cleanup", async (req, res) => {
     const endTime = new Date();
     const duration = endTime - startTime;
 
-    console.log(`[${endTime.toISOString()}] Cleanup completed in ${duration}ms`);
+    console.log(
+      `[${endTime.toISOString()}] Cleanup completed in ${duration}ms`
+    );
 
-    res.json({  
+    res.json({
       message: "Tour cleanup completed",
       timestamp: endTime.toISOString(),
-      duration: `${duration}ms`
+      duration: `${duration}ms`,
     });
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] Error during tour cleanup:`, error);
+    console.error(
+      `[${new Date().toISOString()}] Error during tour cleanup:`,
+      error
+    );
     res.status(500).json({ error: "Failed to clean up tours" });
   }
 });
@@ -466,23 +487,37 @@ router.post("/booked-hours", async (req, res) => {
     if (!date) {
       return res.status(400).json({ error: "Date is required" });
     }
-    const startOfDay = new Date(date);
-    const endOfDay = new Date(startOfDay);
+    // Convert the input date to IST
+    const inputDate = new Date(date);
+    console.log(inputDate);
+    const istDate = new Date(inputDate);
+    
+    // Set to start of day in IST
+    istDate.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(istDate);
     endOfDay.setDate(endOfDay.getDate() + 1);
 
+    console.log(istDate, endOfDay);
     const tours = await prisma.tour.findMany({
       where: {
         timestamp: {
-          gte: startOfDay,
+          gte: istDate,
           lt: endOfDay,
         },
       },
     });
 
-    const bookedHoursWithSize = tours.map((tour) => ({
-      hour: tour.timestamp.getHours(),
-      totalSize: tour.totalSize,
-    }));
+    console.log(tours);
+    const bookedHoursWithSize = tours.map((tour) => {
+      // Convert tour timestamp to IST
+      const istTourTimestamp = new Date(tour.timestamp.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      
+      return {
+        hour: istTourTimestamp.getHours(),
+        totalSize: tour.totalSize,
+      };
+    });
 
     res.json(bookedHoursWithSize);
   } catch (error) {
