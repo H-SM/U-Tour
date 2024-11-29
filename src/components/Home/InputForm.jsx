@@ -368,7 +368,7 @@ const InputForm = ({
         {/* Tour Type Selection */}
         <div className="space-y-2">
           <label className="text-white text-sm font-medium">Tour Type</label>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap justify-start items-start gap-4">
             <button
               type="button"
               onClick={() =>
@@ -537,8 +537,8 @@ const InputForm = ({
         )}
 
         {/* Date and Time Selection - Modified */}
-        <div className="flex justify-between items-start gap-2">
-          <div className="space-y-2 w-1/2">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-2">
+          <div className="space-y-2 w-full sm:w-1/2">
             <label className="text-white text-sm font-medium">
               Departure Date
             </label>
@@ -551,7 +551,7 @@ const InputForm = ({
               className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white"
             />
           </div>
-          <div className="space-y-2 w-1/2">
+          <div className="space-y-2 w-full sm:w-1/2">
             <label className="text-white text-sm font-medium">
               Departure Time
             </label>

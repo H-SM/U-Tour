@@ -70,7 +70,7 @@ const CloudinaryUploadWidget = (props) => {
     <button 
       onClick={openWidget}
       type="button"
-      className="rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium  px-5 py-2 text-md shadow-sm"
+      className="rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium w-full mx-2 mt-4 sm:m-0 sm:w-fit px-5 py-2 text-md shadow-sm"
     >
       Change
     </button>

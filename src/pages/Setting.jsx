@@ -200,22 +200,25 @@ const Setting = ({ isExpanded, setIsExpanded, showAlert }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-white mb-1">
-                    Profile Picture URL
+                    Profile Picture
                   </label>
-                  <div className="mt-2 flex items-center justify-center gap-x-8">
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-8 py-4 rounded bg-white/5 border border-white/20 text-white">
                     {photoURL ? (
                       <img
                         src={photoURL}
-                        className="w-[15vh] rounded-full"
+                        className="w-[15vh] h-[15vh] rounded-full object-fill"
                         alt="pfp"
                       />
                     ) : (
                       <UserCircleIcon
-                        className="h-[15vh] w-[15vh] text-cyan-600"
+                        className="h-[15vh] w-[15vh] text-white/80"
                         aria-hidden="true"
                       />
                     )}
-                    <CloudinaryUploadWidget showAlert={showAlert} setPhotoURL={setPhotoURL}/>
+                      <CloudinaryUploadWidget
+                        showAlert={showAlert}
+                        setPhotoURL={setPhotoURL}
+                      />
                   </div>
                   {/* <input
                     type="url"
