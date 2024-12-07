@@ -1,3 +1,5 @@
+import { RESULT_STATUS } from "../common/constants.js";
+
 const locations = [
   { value: "Bidholi-magic-stand", label: "Main Gate" },
   { value: "upes-hubble", label: "The Hubble" },
@@ -9,4 +11,13 @@ const locations = [
   { value: "upes-10th-block", label: "10th Block" },
 ];
 
-export { locations };
+// Generate response object
+const generateResponse = (isSuccess, message, data) => {
+  return {
+    status: isSuccess ? RESULT_STATUS.SUCCESS : RESULT_STATUS.ERROR,
+    message,
+    data,
+  };
+};
+
+export { locations, generateResponse };

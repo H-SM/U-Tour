@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Clock, MapPin, User, AlertCircle } from "lucide-react";
 import Modal from "../Modal";
 import { useNavigate } from "react-router-dom";
-import { locations } from "../../common/constant";
+import { locations, RESULT_STATUS } from "../../common/constant";
 
 const SessionCard = ({ session }) => {
   const [loading, setLoading] = useState(false);
@@ -70,8 +70,10 @@ const SessionCard = ({ session }) => {
       if (!response.ok) {
         throw new Error("Failed to cancel session");
       }
-
-      window.location.reload();
+      const result = await response.json();
+      if (result.status === RESULT_STATUS.SUCCESS) {
+        window.location.reload();
+      }
     } catch (err) {
       setError("Failed to cancel session. Please try again.");
     } finally {

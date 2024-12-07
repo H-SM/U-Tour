@@ -1,4 +1,4 @@
-const RESULT_STATUS = {
+export const RESULT_STATUS = {
   ERROR: "error",
   SUCCESS: "success",
   EMPTY: "empty",
@@ -9,5 +9,3 @@ const RESULT_STATUS = {
 //   error?: string;
 //   data: any;
 // }
-
-module.exports = { RESULT_STATUS };

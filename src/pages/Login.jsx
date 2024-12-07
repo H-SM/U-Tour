@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BsGithub, BsGoogle } from "react-icons/bs";
 import useFirebaseAuth from "../hooks/useFirebaseAuth";
 import ContextValue from "../context/EventContext";
+import { RESULT_STATUS } from "../common/constant";
 
 const Login = ({ showAlert }) => {
   const navigate = useNavigate();
@@ -21,23 +22,28 @@ const Login = ({ showAlert }) => {
 
   const migrateUser = async (email, firebaseUid) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/users/migrate-user`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, firebaseUid }),
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/users/migrate-user`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, firebaseUid }),
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Migration failed');
+        throw new Error(errorData.message || "Migration failed");
       }
 
-      const data = await response.json();
-      return data.success;
+      const result = await response.json();
+      if (result.status === RESULT_STATUS.SUCCESS) {
+        return result.status;
+      }
     } catch (error) {
-      console.error('User migration failed:', error);
+      console.error("User migration failed:", error);
       throw error;
     }
   };
@@ -52,7 +58,11 @@ const Login = ({ showAlert }) => {
           throw new Error("Passwords don't match");
         }
         // Sign up the user with Firebase
-        const userCredential = await signUp(credentials.email, credentials.password, credentials.name);
+        const userCredential = await signUp(
+          credentials.email,
+          credentials.password,
+          credentials.name
+        );
         console.log(userCredential);
         // After successful signup, attempt to migrate user data
         try {
@@ -124,7 +134,7 @@ const Login = ({ showAlert }) => {
     <div className="min-h-screen w-full flex flex-col justify-center items-center bg-gradient-to-b from-primary to-primary-grad px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 
+          <h1
             className="font-black text-transparent text-4xl md:text-5xl bg-gradient-to-r from-border-gradient-left to-border-gradient-right bg-clip-text"
             style={{
               textShadow: `
@@ -136,17 +146,20 @@ const Login = ({ showAlert }) => {
             U TOUR
           </h1>
         </div>
-        
+
         <div className="bg-gradient-to-r from-border-gradient-left to-border-gradient-right p-[2px] rounded-xl shadow-2xl">
           <div className="bg-background-primary rounded-xl p-6 md:p-8 text-white/80">
             <h2 className="text-xl md:text-2xl font-bold text-text mb-6">
               {signup ? "Create a new account" : "Login to your account"}
             </h2>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               {signup && (
                 <div>
-                  <label htmlFor="name" className="block mb-2 text-sm text-text">
+                  <label
+                    htmlFor="name"
+                    className="block mb-2 text-sm text-text"
+                  >
                     Your name
                   </label>
                   <input
@@ -161,7 +174,7 @@ const Login = ({ showAlert }) => {
                   />
                 </div>
               )}
-              
+
               <div>
                 <label htmlFor="email" className="block mb-2 text-sm text-text">
                   Your email
@@ -176,9 +189,12 @@ const Login = ({ showAlert }) => {
                   required
                 />
               </div>
-              
+
               <div className="relative">
-                <label htmlFor="password" className="block mb-2 text-sm text-text">
+                <label
+                  htmlFor="password"
+                  className="block mb-2 text-sm text-text"
+                >
                   Password
                 </label>
                 <input
@@ -197,21 +213,49 @@ const Login = ({ showAlert }) => {
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 20 18">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1.933 10.909A4.357 4.357 0 0 1 1 9c0-1 4-6 9-6m7.6 3.8A5.068 5.068 0 0 1 19 9c0 1-3 6-9 6-.314 0-.62-.014-.918-.04M2 17 18 1m-5 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 20 18"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M1.933 10.909A4.357 4.357 0 0 1 1 9c0-1 4-6 9-6m7.6 3.8A5.068 5.068 0 0 1 19 9c0 1-3 6-9 6-.314 0-.62-.014-.918-.04M2 17 18 1m-5 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                      />
                     </svg>
                   ) : (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 20 14">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 13c4.97 0 9-2.686 9-6s-4.03-6-9-6-9 2.686-9 6 4.03 6 9 6Z" />
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 20 14"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M10 13c4.97 0 9-2.686 9-6s-4.03-6-9-6-9 2.686-9 6 4.03 6 9 6Z"
+                      />
                     </svg>
                   )}
                 </button>
               </div>
-              
+
               {signup && (
                 <div>
-                  <label htmlFor="cpassword" className="block mb-2 text-sm text-text">
+                  <label
+                    htmlFor="cpassword"
+                    className="block mb-2 text-sm text-text"
+                  >
                     Confirm Password
                   </label>
                   <input
@@ -226,7 +270,7 @@ const Login = ({ showAlert }) => {
                   />
                 </div>
               )}
-              
+
               {!signup && (
                 <div className="text-center">
                   <button
@@ -238,7 +282,7 @@ const Login = ({ showAlert }) => {
                   </button>
                 </div>
               )}
-              
+
               <button
                 type="submit"
                 className="w-full py-2.5 bg-background-secondary hover:bg-chart-background rounded-lg text-white transition duration-150"
@@ -246,14 +290,14 @@ const Login = ({ showAlert }) => {
                 {signup ? "Sign up" : "Log in"}
               </button>
             </form>
-            
+
             <div className="my-6">
               <div className="relative flex items-center justify-center">
                 <div className="flex-grow border-t border-gray-300/30"></div>
                 <span className="px-3 text-text bg-transparent">OR</span>
                 <div className="flex-grow border-t border-gray-300/30"></div>
               </div>
-              
+
               <div className="flex gap-4 mt-6">
                 <button
                   onClick={handleGoogleSignIn}
@@ -269,7 +313,7 @@ const Login = ({ showAlert }) => {
                 </button>
               </div>
             </div>
-            
+
             <div className="text-center text-sm text-text">
               <p>
                 {signup

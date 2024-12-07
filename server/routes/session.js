@@ -7,7 +7,7 @@ import { htmlTemplate } from "./../templates/template.js";
 import sgMail from "@sendgrid/mail";
 import { manageTourForSession } from "./tour.js";
 import { removeEmptyTours } from "../queues/tourQueue.js";
-import { locations } from "../utils/constant.js";
+import { generateResponse, locations } from "../utils/constant.js";
 const router = express.Router(); // Create router correctly
 const prisma = new PrismaClient();
 
@@ -54,9 +54,8 @@ router.post("/create", async (req, res) => {
     const totalCurrentSize = existingTour ? existingTour.totalSize : 0;
 
     if (existingTour && totalCurrentSize + sessionTeamSize > 10) {
-      return res.status(400).json({
-        error: "This hour is fully booked. No more sessions can be added.",
-      });
+      const result = generateResponse(false, "This hour is fully booked. No more sessions can be added.");
+      return res.status(400).json(result);
     }
 
     // Handle booking user
@@ -90,7 +89,8 @@ router.post("/create", async (req, res) => {
         isBookedByFirebaseUser = true;
         bookingUserEmail = bookingUserRecord.email;
       } catch (error) {
-        return res.status(400).json({ error: "Invalid booking user ID" });
+        const result = generateResponse(false, { error: "Invalid booking user ID" });
+        return res.status(400).json(result);
       }
     }
 
@@ -250,16 +250,19 @@ router.post("/create", async (req, res) => {
       console.error("Error sending confirmation emails:", emailError);
     }
 
-    res.status(201).json(session);
+    const result = generateResponse(true, null, session);
+    return res.status(201).json(result);
   } catch (error) {
     if (
       error.message ===
       "This hour is fully booked. No more sessions can be added."
     ) {
-      return res.status(400).json({ error: error.message });
+      const result = generateResponse(false, error.message);
+      return res.status(400).json(result);
     }
     console.error("Error creating session:", error);
-    res.status(500).json({ error: "Failed to create session" });
+    const result = generateResponse(false, "Failed to create session");
+    return res.status(500).json(result);
   }
 });
 
@@ -268,13 +271,16 @@ router.get("/available-slots", async (req, res) => {
   try {
     const { date } = req.query;
     if (!date) {
-      return res.status(400).json({ error: "Date is required" });
+      const result = generateResponse(false, "Date is required");
+      return res.status(400).json(result);
     }
     const availableSlots = {};
-    res.json(availableSlots);
+    const result = generateResponse(true, null, availableSlots);
+    return res.json(result);
   } catch (error) {
     console.error("Error fetching available slots:", error);
-    res.status(500).json({ error: "Failed to fetch available slots" });
+    const result = generateResponse(false, "Failed to fetch available slots");
+    return res.status(500).json(result);
   }
 });
 
@@ -286,7 +292,8 @@ router.patch("/:sessionId/state", async (req, res) => {
 
     // Validate the new state
     if (!["DONE", "ACTIVE", "QUEUED", "CANCEL", "ERROR"].includes(state)) {
-      return res.status(400).json({ error: "Invalid session state" });
+      const result = generateResponse(false, "Invalid session state");
+      return res.status(400).json(result);
     }
 
     // Find the session first to ensure we have the tourId
@@ -299,7 +306,8 @@ router.patch("/:sessionId/state", async (req, res) => {
     });
 
     if (!session) {
-      return res.status(404).json({ error: "Session not found" });
+      const result = generateResponse(false, "Session not found");
+      return res.status(404).json(result);
     }
 
     if (state === "CANCEL" && session.tourId) {
@@ -328,10 +336,12 @@ router.patch("/:sessionId/state", async (req, res) => {
       data: { state },
     });
 
-    res.json(updatedSession);
+    const result = generateResponse(true, null, updatedSession);
+    res.json(result);
   } catch (error) {
     console.error("Error updating session state:", error);
-    res.status(500).json({ error: "Failed to update session state" });
+    const result = generateResponse(false, "Failed to update session state");
+    res.status(500).json(result);
   }
 });
 
@@ -361,10 +371,12 @@ router.get("/upcoming", async (req, res) => {
       take: 50, // Limit to 50 upcoming sessions
     });
 
-    res.json(upcomingSessions);
+    const result = generateResponse(true, null, upcomingSessions);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching upcoming sessions:", error);
-    res.status(500).json({ error: "Failed to fetch upcoming sessions" });
+    const result = generateResponse(false, "Failed to fetch upcoming sessions");
+    res.status(500).json(result);
   }
 });
 
@@ -380,14 +392,17 @@ router.get("/:sessionId", async (req, res) => {
       },
     });
 
-    if (!session) return res.status(404).json({ error: "Session not found" });
+    if (!session) {
+      const result = generateResponse(false, "Session not found");
+      return res.status(404).json(result);
+    }
 
-    res.json({
-      session,
-    });
+    const result = generateResponse(true, null, { session });
+    res.json(result);
   } catch (error) {
     console.error("Error fetching session data:", error);
-    res.status(500).json({ error: "Failed to fetch session data" });
+    const result = generateResponse(false, "Failed to fetch session data");
+    res.status(500).json(result);
   }
 });
 
@@ -416,10 +431,12 @@ router.get("/range/user/:userId", async (req, res) => {
       },
     });
 
-    res.json(sessions);
+    const result = generateResponse(true, null, sessions);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching sessions by date range:", error);
-    res.status(500).json({ error: "Failed to fetch sessions by date range" });
+    const result = generateResponse(false, "Failed to fetch sessions by date range");
+    res.status(500).json(result);
   }
 });
 
@@ -453,14 +470,16 @@ router.get("/stats", async (req, res) => {
       }),
     ]);
 
-    res.json({
+    const result = generateResponse(true, null, {
       sessionsByState: stats[0],
       last24Hours: stats[1],
       popularDestinations: stats[2],
     });
+    res.json(result);
   } catch (error) {
     console.error("Error fetching session statistics:", error);
-    res.status(500).json({ error: "Failed to fetch session statistics" });
+    const result = generateResponse(false, "Failed to fetch session statistics");
+    res.status(500).json(result);
   }
 });
 

@@ -2,6 +2,7 @@ import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import admin from 'firebase-admin';
 import { migrateToFirebase } from "./../utils/userManager.js";
+import { generateResponse } from '../utils/constant.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -31,7 +32,8 @@ router.get("/:userId", async (req, res) => {
       });
 
       if (!prismaUser) {
-        return res.status(404).json({ error: "User not found in either Firebase or database" });
+        const result = generateResponse(false, "User not found in either Firebase or database");
+        return res.status(404).json(result);
       }
 
       userData = {
@@ -42,12 +44,13 @@ router.get("/:userId", async (req, res) => {
         isFirebaseUser: false
       };
     }
-
-    res.json(userData);
+    const result = generateResponse(true, null, userData);
+    res.json(result);
     
   } catch (error) {
     console.error("Error fetching user data:", error);
-    res.status(500).json({ error: "Failed to fetch user data" });
+    const result = generateResponse(false, "Failed to fetch user data");
+    res.status(500).json(result);
   }
 });
 
@@ -58,9 +61,11 @@ router.get("/:userId/sessions", async (req, res) => {
 
     // Verify if the user exists in Firebase
     const userRecord = await admin.auth().getUser(userId);
-    if (!userRecord)
-      return res.status(404).json({ error: "User not found in Firebase" });
-
+    if (!userRecord) {
+      const result = generateResponse(false, "User not found in Firebase");
+      return res.status(404).json(result);
+    }
+      
     // Build query conditions
     const where = { userId };
     if (status) {
@@ -77,8 +82,7 @@ router.get("/:userId/sessions", async (req, res) => {
 
     // Get total count for pagination
     const totalCount = await prisma.session.count({ where });
-
-    res.json({
+    const result = generateResponse(true, null, {
       sessions,
       pagination: {
         total: totalCount,
@@ -86,9 +90,11 @@ router.get("/:userId/sessions", async (req, res) => {
         limit: parseInt(limit),
       },
     });
+    res.json(result);
   } catch (error) {
     console.error("Error fetching user sessions:", error);
-    res.status(500).json({ error: "Failed to fetch user sessions" });
+    const result = generateResponse(false, "Failed to fetch user sessions");
+    res.status(500).json(result);
   }
 });
 
@@ -100,14 +106,15 @@ router.post("/migrate-user", async (req, res) => {
     const result = await migrateToFirebase(email, firebaseUid);
     
     // Always return success, but indicate if migration occurred
-    res.json({
-      success: true,
+    const success = generateResponse(true, null, {
       migrated: result.migrated,
       firebaseUid: result.firebaseUid
     });
+    res.json(success);
   } catch (error) {
     console.error("Error migrating user:", error);
-    res.status(500).json({ error: "Failed to migrate user" });
+    const result = generateResponse(false, "Failed to migrate user");
+    res.status(500).json(result);
   }
 });
 
@@ -116,9 +123,8 @@ router.post("/search", async (req, res) => {
   try {
     const { query } = req.body;
     if (!query || query.length < 3) {
-      return res.status(400).json({
-        error: "Search query must be at least 3 characters long",
-      });
+      const result = generateResponse(false, "Search query must be at least 3 characters long");
+      return res.status(400).json(result);
     }
 
     // Initialize arrays to store matching users
@@ -191,8 +197,7 @@ router.post("/search", async (req, res) => {
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
     const paginatedUsers = matchingUsers.slice(startIndex, endIndex);
-
-    res.json({
+    const result = generateResponse(true, null, {
       users: paginatedUsers,
       pagination: {
         total: matchingUsers.length,
@@ -202,9 +207,11 @@ router.post("/search", async (req, res) => {
       },
       query,
     });
+    res.json(result);
   } catch (error) {
     console.error("Error searching users:", error);
-    res.status(500).json({ error: "Failed to search users" });
+    const result = generateResponse(false, "Failed to search users");
+    res.status(500).json(result);
   } finally {
     await prisma.$disconnect();
   }
@@ -217,9 +224,10 @@ router.get("/:userId/get-combined", async (req, res) => {
 
     // Get user from Firebase
     const userRecord = await admin.auth().getUser(userId);
-    if (!userRecord)
-      return res.status(404).json({ error: "User not found in Firebase" });
-
+    if (!userRecord) {
+      const result = generateResponse(false, "User not found in Firebase");
+      return res.status(404).json(result);
+    }
     // Get user's sessions statistics
     const sessionsStats = await prisma.session.groupBy({
       by: ["state"],
@@ -232,8 +240,7 @@ router.get("/:userId/get-combined", async (req, res) => {
       where: { userId },
       orderBy: { departureTime: "desc" },
     });
-
-    res.json({
+    const result = generateResponse(true, null, {
       user: {
         displayName: userRecord.displayName,
         email: userRecord.email,
@@ -249,9 +256,11 @@ router.get("/:userId/get-combined", async (req, res) => {
       },
       recentSessions,
     });
+    res.json(result);
   } catch (error) {
     console.error("Error fetching user profile:", error);
-    res.status(500).json({ error: "Failed to fetch user profile" });
+    const result = generateResponse(false, "Failed to fetch user profile");
+    res.status(500).json(result);
   }
 });
 
@@ -263,13 +272,16 @@ router.get("/:userId/state/:state", async (req, res) => {
 
     // Validate the state
     if (!["DONE", "ACTIVE", "QUEUED", "CANCEL", "ERROR"].includes(state)) {
-      return res.status(400).json({ error: "Invalid session state" });
+      const result = generateResponse(false, "Invalid session state");
+      return res.status(400).json(result);
     }
 
     // Verify if the user exists in Firebase
     const userRecord = await admin.auth().getUser(userId);
-    if (!userRecord)
-      return res.status(404).json({ error: "User not found in Firebase" });
+    if (!userRecord) {
+      const result = generateResponse(false, "User not found in Firebase");
+      return res.status(404).json(result);
+    }
 
     // Get sessions for the specific state
     const sessions = await prisma.session.findMany({
@@ -306,11 +318,12 @@ router.get("/:userId/state/:state", async (req, res) => {
       },
       state,
     };
-
-    res.json(response);
+    const result = generateResponse(true, null, response);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching user sessions by state:", error);
-    res.status(500).json({ error: "Failed to fetch user sessions by state" });
+    const result = generateResponse(false, "Failed to fetch user sessions by state");
+    res.status(500).json(result);
   }
 });
 

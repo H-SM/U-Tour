@@ -2,6 +2,7 @@ import express from 'express';
 import { htmlTemplate } from './../templates/template.js';
 import sgMail from '@sendgrid/mail';
 import emailjs from '@emailjs/nodejs';
+import { generateResponse } from '../utils/constant.js';
 
 const router = express.Router();
 
@@ -11,11 +12,8 @@ router.post("/send-mail-emailjs", async (req, res) => {
   const { to, from, departureTime, name, tourType, email } = req.body;
 
   if (!to || !from || !departureTime || !name || !tourType || !email) {
-    return res.status(400).json({
-      status: "error",
-      message:
-        "Missing required fields: to, from, departureTime, name, tourType, or email",
-    });
+    const result = generateResponse(false, "Missing required fields: to, from, departureTime, name, tourType, or email");
+    return res.status(400).json(result);
   }
 
   try {
@@ -41,17 +39,12 @@ router.post("/send-mail-emailjs", async (req, res) => {
     );
 
     console.log("Email sent successfully!");
-    res.status(200).json({
-      status: "success",
-      message: "Email sent successfully!",
-    });
+    const result = generateResponse(true, "Email sent successfully!");
+    res.json(result);
   } catch (error) {
     console.error("Error sending email:", error);
-    res.status(500).json({
-      status: "error",
-      message: "Failed to send email",
-      error: error.message,
-    });
+    const result = generateResponse(false, "Failed to send email", error.message);
+    res.status(500).json(result);
   }
 });
 
@@ -59,11 +52,8 @@ router.post("/send-mail", async (req, res) => {
   const { to, from, departureTime, name, tourType, email } = req.body;
 
   if (!to || !from || !departureTime || !name || !tourType || !email) {
-    return res.status(400).json({
-      status: "error",
-      message:
-        "Missing required fields: to, from, departureTime, name, tourType, or email",
-    });
+    const result = generateResponse(false, "Missing required fields: to, from, departureTime, name, tourType, or email");
+    return res.status(400).json(result);
   }
 
   try {
@@ -90,17 +80,12 @@ router.post("/send-mail", async (req, res) => {
 
     await sgMail.send(msg);
     console.log("Email sent successfully!");
-    res.status(200).json({
-      status: "success",
-      message: "Email sent successfully!",
-    });
+    const result = generateResponse(true, "Email sent successfully!");
+    res.json(result);
   } catch (error) {
     console.error("Error sending email:", error);
-    res.status(500).json({
-      status: "error",
-      message: "Failed to send email",
-      error: error.message,
-    });
+    const result = generateResponse(false, "Failed to send email", error.message);
+    res.status(500).json(result);
   }
 });
 

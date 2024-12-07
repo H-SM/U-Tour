@@ -8,7 +8,7 @@ import useFirebaseAuth from "../hooks/useFirebaseAuth";
 import Loader from "../components/Loader";
 import { Check, Share2, User } from "lucide-react";
 import Modal from "../components/Modal";
-import { locations } from "../common/constant";
+import { locations, RESULT_STATUS } from "../common/constant";
 
 const SessionDetail = ({ isExpanded, setIsExpanded }) => {
   const { sessionId } = useParams();
@@ -52,15 +52,17 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
   useEffect(() => {
     const fetchSessionDetails = async () => {
       try {
+        console.log("Session ID:", sessionId);
         const response = await fetch(
           `${process.env.REACT_APP_API_URL}/sessions/${sessionId}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch session details");
         }
-        const data = await response.json();
-        setSession(data.session);
-        console.log("Session details:", data.session);
+        const result = await response.json();
+        if (result.status === RESULT_STATUS.SUCCESS) {
+          setSession(result.data.session);
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -79,7 +81,9 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
           `${process.env.REACT_APP_API_URL}/users/${session.userId}`
         );
         const participantData = await participantResponse.json();
-        setParticipant(participantData);
+        if (participantData.status === RESULT_STATUS.SUCCESS) {
+          setParticipant(participantData.data);
+        }
 
         // Only fetch booker if different from participant
         if (session.bookingUserId !== session.userId) {
@@ -92,9 +96,11 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
           const bookerResponse = await fetch(
             `${process.env.REACT_APP_API_URL}/users/${session.bookingUserId}`
           );
-          const bookerData = await bookerResponse.json();
-          console.log("Booker details:", bookerData);
-          setBooker(bookerData);
+          const result = await bookerResponse.json();
+          if (result.status === RESULT_STATUS.SUCCESS) {
+            console.log("Booker details:", result.data);
+            setBooker(result.data);
+          }
         }
       } catch (error) {
         console.error("Error fetching user details:", error);
@@ -185,6 +191,10 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
         throw new Error("Failed to cancel session");
       }
 
+      const result = await response.json();
+      if (result.status !== RESULT_STATUS.SUCCESS) {
+        throw new Error("Failed to cancel session");
+      }
       window.location.reload();
     } catch (err) {
       setError("Failed to cancel session. Please try again.");

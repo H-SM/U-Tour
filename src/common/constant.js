@@ -26,4 +26,10 @@ const locations = [
   { value: "upes-10th-block", label: "10th Block" },
 ];
 
-export { FIXED_HOURS, locations };
+const RESULT_STATUS = {
+  ERROR: "error",
+  SUCCESS: "success",
+  EMPTY: "empty",
+};
+
+export { FIXED_HOURS, locations, RESULT_STATUS };

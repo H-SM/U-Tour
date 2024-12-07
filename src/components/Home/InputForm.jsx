@@ -10,7 +10,7 @@ import { MapPin, Clock, Mail, Users, User, Search, X } from "lucide-react";
 import SearchUser from "./SearchUser";
 import debounce from "lodash/debounce";
 import { useNavigate } from "react-router-dom";
-import { FIXED_HOURS } from "../../common/constant";
+import { FIXED_HOURS, RESULT_STATUS } from "../../common/constant";
 
 const InputForm = ({
   handleInputChange,
@@ -102,9 +102,13 @@ const InputForm = ({
           throw new Error("Search request failed");
         }
 
-        const data = await response.json();
-        setSearchResults(data.users);
-        setIsSearchOpen(true);
+        const result = await response.json();
+        if (result.status === RESULT_STATUS.SUCCESS) {
+          setSearchResults(result.data.users);
+          setIsSearchOpen(true);
+        } else {
+          showAlert("Error searching users", "error");
+        }
       } catch (error) {
         console.error("Error searching users:", error);
         showAlert("Error searching users", "error");
@@ -231,9 +235,14 @@ const InputForm = ({
       }
 
       const result = await response.json();
-      console.log("Session created:", result);
-      showAlert("Session created successfully!", "success");
+      if (result.status === RESULT_STATUS.ERROR) {
+        throw new Error(result.message);
+      }
 
+      console.log("Session created:", result);
+      if (result.status === RESULT_STATUS.SUCCESS) {
+        showAlert("Session created successfully!", "success");
+      }
       setBookingData({
         name: "",
         type: "single",
@@ -248,7 +257,7 @@ const InputForm = ({
       });
       setSelectedUser(null);
       setUseLoggedInUser(false);
-      navigate(`/sessions/${result.id}`);
+      navigate(`/sessions/${result.data.id}`);
     } catch (error) {
       console.error("Error creating session:", error);
       showAlert("Failed to create session. Please try again.", "error");
@@ -277,8 +286,13 @@ const InputForm = ({
           throw new Error("Failed to fetch booked hours");
         }
 
-        const data = await response.json();
-        setBookedHours(data);
+        const result = await response.json();
+        if(result.status === RESULT_STATUS.ERROR) {
+          throw new Error(result.message);
+        }
+        if (result.status === RESULT_STATUS.SUCCESS) {
+          setBookedHours(result.data);
+        }
       } catch (error) {
         console.error("Error fetching booked hours:", error);
         showAlert("Failed to fetch available hours", "error");
@@ -292,16 +306,16 @@ const InputForm = ({
 
   const getMinDate = () => {
     const now = new Date();
-    
+
     // If current time is after 5 PM, set min date to tomorrow
     if (now.getHours() >= 17) {
       const tomorrow = new Date(now);
       tomorrow.setDate(now.getDate() + 1);
-      return tomorrow.toISOString().split('T')[0];
+      return tomorrow.toISOString().split("T")[0];
     }
-    
+
     // Otherwise, use today's date
-    return now.toISOString().split('T')[0];
+    return now.toISOString().split("T")[0];
   };
 
   const getAvailableHours = () => {
@@ -555,22 +569,22 @@ const InputForm = ({
             <label className="text-white text-sm font-medium">
               Departure Time
             </label>
-            {!isLoadingHours ?
-            <select
-              name="departureTime"
-              value={bookingData.departureTime}
-              onChange={handleInputChange}
-              className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white disabled:opacity-60"
-              disabled={bookingData.departureDate === ""}
-            >
-              <option value="">Select Time</option>
-              {getAvailableHours().map((hour) => (
-                <option key={hour.value} value={hour.value}>
-                  {hour.label}
-                </option>
-              ))}
-            </select>
-            : (
+            {!isLoadingHours ? (
+              <select
+                name="departureTime"
+                value={bookingData.departureTime}
+                onChange={handleInputChange}
+                className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white disabled:opacity-60"
+                disabled={bookingData.departureDate === ""}
+              >
+                <option value="">Select Time</option>
+                {getAvailableHours().map((hour) => (
+                  <option key={hour.value} value={hour.value}>
+                    {hour.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
               <div className="w-full flex justify-center items-center bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white disabled:opacity-60 h-[2.6rem]">
                 <div className="w-4 h-4 border-2 border-t-2 border-white/30 border-t-white/70 rounded-full animate-spin"></div>
               </div>

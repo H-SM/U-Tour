@@ -21,7 +21,7 @@ import {
 
 import sgMail from "@sendgrid/mail";
 import { htmlTemplate } from "../templates/template.js";
-import { locations } from "../utils/constant.js";
+import { generateResponse, locations } from "../utils/constant.js";
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 const formatLocation = (locationValue) => {
@@ -150,9 +150,8 @@ router.post("/pop-tour", async (req, res) => {
   try {
     const { state, message } = req.body;
     if (!["ACTIVE", "CANCEL"].includes(state)) {
-      return res.status(400).json({
-        error: "Invalid state. Must be either 'ACTIVE' or 'CANCEL'",
-      });
+      const result = generateResponse(false, "Invalid state. Must be either 'ACTIVE' or 'CANCEL'");
+      return res.status(400).json(result);
     }
     let customMessage = message;
     if (state == "CANCEL" && !customMessage) {
@@ -161,7 +160,8 @@ router.post("/pop-tour", async (req, res) => {
     }
     const topTour = await popTopTourFromQueue();
     if (!topTour) {
-      return res.status(404).json({ message: "No tours in queue" });
+      const result = generateResponse(false, "No tours in queue");
+      return res.status(404).json(result);
     }
     // Update sessions and get the updated sessions in one operation
     const updateResult = await prisma.session.updateMany({
@@ -243,15 +243,16 @@ router.post("/pop-tour", async (req, res) => {
       // Wait for all emails to be sent
       await Promise.all(emailPromises);
     }
-    res.json({
-      message: `Tour ${topTour.tourId} processed successfully`,
+    const result = generateResponse(true, `Tour ${topTour.tourId} processed successfully`, {
       updatedState: state,
       tour: topTour,
-      updatedCount: updateResult.count, // Number of sessions updated
+      updatedCount: updateResult.count,
     });
+    res.json(result);
   } catch (error) {
     console.error("Error processing next tour:", error);
-    res.status(500).json({ error: "Failed to process next tour" });
+    const result = generateResponse(false, "Failed to process next tour");
+    res.status(500).json(result);
   }
 });
 
@@ -262,9 +263,8 @@ router.patch("/:tourId/sessions", async (req, res) => {
     const { state, message } = req.body;
 
     if (!["DONE", "ACTIVE", "QUEUED", "CANCEL", "ERROR"].includes(state)) {
-      return res.status(400).json({
-        error: "Invalid session state",
-      });
+      const result = generateResponse(false, "Invalid session state");
+      return res.status(400).json(result);
     }
 
     // First verify the tour exists
@@ -274,9 +274,8 @@ router.patch("/:tourId/sessions", async (req, res) => {
     });
 
     if (!tour) {
-      return res.status(404).json({
-        error: "Tour not found",
-      });
+      const result = generateResponse(false, "Tour not found");
+      return res.status(404).json(result);
     }
 
     // Update all sessions for this tour
@@ -293,17 +292,16 @@ router.patch("/:tourId/sessions", async (req, res) => {
       await removeEmptyTours();
     }
 
-    res.json({
-      message: `Updated ${updatedSessions.count} sessions for tour ${tourId}`,
+    const result = generateResponse(true, `Updated ${updatedSessions.count} sessions for tour ${tourId}`, {
       tourId,
       newState: state,
       updatedCount: updatedSessions.count,
     });
+    res.json(result);
   } catch (error) {
     console.error("Error updating tour sessions:", error);
-    res.status(500).json({
-      error: "Failed to update tour sessions",
-    });
+    const result = generateResponse(false, "Failed to update tour sessions");
+    res.status(500).json(result);
   }
 });
 
@@ -312,12 +310,15 @@ router.get("/next-tour", async (req, res) => {
   try {
     const nextTour = await peekNextTour();
     if (!nextTour) {
-      return res.status(404).json({ message: "No tours in queue" });
+      const result = generateResponse(false, "No tours in queue");
+      return res.status(404).json(result);
     }
-    res.json(nextTour);
+    const result = generateResponse(true, null, nextTour);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching next tour:", error);
-    res.status(500).json({ error: "Failed to fetch next tour" });
+    const result = generateResponse(false, "Failed to fetch next tour");
+    res.status(500).json(result);
   }
 });
 
@@ -325,20 +326,24 @@ router.get("/next-tour", async (req, res) => {
 router.post("/remove-empty-tours", async (req, res) => {
   try {
     await removeEmptyTours();
-    res.json({ message: "Empty tours removed successfully" });
+    const result = generateResponse(true, "Empty tours removed successfully");
+    res.json(result);
   } catch (error) {
     console.error("Error removing empty tours:", error);
-    res.status(500).json({ error: "Failed to remove empty tours" });
+    const result = generateResponse(false, "Failed to remove empty tours");
+    res.status(500).json(result);
   }
 });
 
 router.post("/process-expired-tours", async (req, res) => {
   try {
     await processExpiredTours();
-    res.json({ message: "Expired tours processed successfully" });
+    const result = generateResponse(true, "Expired tours processed successfully");
+    res.json(result);
   } catch (error) {
     console.error("Error processing expired tours:", error);
-    res.status(500).json({ error: "Failed to process expired tours" });
+    const result = generateResponse(false, "Failed to process expired tours");
+    res.status(500).json(result);
   }
 });
 
@@ -346,12 +351,15 @@ router.post("/pop-top-tour", async (req, res) => {
   try {
     const topTour = await popTopTourFromQueue();
     if (!topTour) {
-      return res.status(404).json({ message: "No tours in queue" });
+      const result = generateResponse(false, "No tours in queue");
+      return res.status(404).json(result);
     }
-    res.json(topTour);
+    const result = generateResponse(true, null, topTour);
+    res.json(result);
   } catch (error) {
     console.error("Error popping top tour:", error);
-    res.status(500).json({ error: "Failed to pop top tour" });
+    const result = generateResponse(false, "Failed to pop top tour");
+    res.status(500).json(result);
   }
 });
 
@@ -361,14 +369,17 @@ router.get("/next-tour-priority", async (req, res) => {
     const queuedTours = await getAllQueuedTours();
 
     if (queuedTours.length === 0) {
-      return res.status(404).json({ message: "No tours in queue" });
+      const result = generateResponse(false, "No tours in queue");
+      return res.status(404).json(result);
     }
 
     // Return the first (highest priority) tour
-    res.json(queuedTours[0]);
+    const result = generateResponse(true, null, queuedTours[0]);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching next tour by priority:", error);
-    res.status(500).json({ error: "Failed to fetch next tour" });
+    const result = generateResponse(false, "Failed to fetch next tour by priority");
+    res.status(500).json(result);
   }
 });
 
@@ -376,20 +387,24 @@ router.get("/next-tour-priority", async (req, res) => {
 router.get("/queued-tours", async (req, res) => {
   try {
     const queuedTours = await getAllQueuedTours();
-    res.json(queuedTours);
+    const result = generateResponse(true, null, queuedTours);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching queued tours:", error);
-    res.status(500).json({ error: "Failed to fetch queued tours" });
+    const result = generateResponse(false, "Failed to fetch queued tours");
+    res.status(500).json(result);
   }
 });
 
 router.get("/queued-tours-concise", async (req, res) => {
   try {
     const queuedTours = await getAllQueuedToursConcise();
-    res.json(queuedTours);
+    const result = generateResponse(true, null, queuedTours);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching queued tours:", error);
-    res.status(500).json({ error: "Failed to fetch queued tours" });
+    const result = generateResponse(false, "Failed to fetch queued tours");
+    res.status(500).json(result);
   }
 });
 
@@ -434,15 +449,16 @@ router.get("/queue-status", async (req, res) => {
     const activeJobs = await tourQueue.getActive();
     const completedJobs = await tourQueue.getCompleted();
     displayTourQueueStatus();
-
-    res.json({
+    const result = generateResponse(true, null, {
       waitingJobs: waitingJobs.length,
       activeJobs: activeJobs.length,
       completedJobs: completedJobs.length,
     });
+    res.json(result);
   } catch (error) {
     console.error("Error fetching queue status:", error);
-    res.status(500).json({ error: "Failed to fetch queue status" });
+    const result = generateResponse(false, "Failed to fetch queue status");
+    res.status(500).json(result);
   }
 });
 
@@ -463,13 +479,16 @@ router.get("/:tourId", async (req, res) => {
     });
 
     if (!tour) {
-      return res.status(404).json({ error: "Tour not found" });
+      const result = generateResponse(false, "Tour not found");
+      return res.status(404).json(result);
     }
 
-    res.json(tour);
+    const result = generateResponse(true, null, tour);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching tour details:", error);
-    res.status(500).json({ error: "Failed to fetch tour details" });
+    const result = generateResponse(false, "Failed to fetch tour details");
+    res.status(500).json(result);
   }
 });
 
@@ -478,7 +497,8 @@ router.post("/booked-hours", async (req, res) => {
   try {
     const { date } = req.body;
     if (!date) {
-      return res.status(400).json({ error: "Date is required" });
+      const result = generateResponse(false, "Date is required");
+      return res.status(400).json(result);
     }
     // Convert the input date to IST
     const inputDate = new Date(date);
@@ -514,10 +534,12 @@ router.post("/booked-hours", async (req, res) => {
       };
     });
 
-    res.json(bookedHoursWithSize);
+    const result = generateResponse(true, null, bookedHoursWithSize);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching booked hours:", error);
-    res.status(500).json({ error: "Failed to fetch booked hours" });
+    const result = generateResponse(false, "Failed to fetch booked hours");
+    res.status(500).json(result);
   }
 });
 
@@ -526,7 +548,8 @@ router.post("/day-sessions", async (req, res) => {
   try {
     const { date } = req.body;
     if (!date) {
-      return res.status(400).json({ error: "Date is required" });
+      const result = generateResponse(false, "Date is required");
+      return res.status(400).json(result);
     }
 
     const startOfDay = new Date(date);
@@ -552,10 +575,12 @@ router.post("/day-sessions", async (req, res) => {
       },
     });
 
-    res.json(tours);
+    const result = generateResponse(true, null, tours);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching day sessions:", error);
-    res.status(500).json({ error: "Failed to fetch day sessions" });
+    const result = generateResponse(false, "Failed to fetch day sessions");
+    res.status(500).json(result);
   }
 });
 
@@ -564,7 +589,8 @@ router.post("/day-tours", async (req, res) => {
   try {
     const { date } = req.body;
     if (!date) {
-      return res.status(400).json({ error: "Date is required" });
+      const result = generateResponse(false, "Date is required");
+      return res.status(400).json(result);
     }
 
     const startOfDay = new Date(date);
@@ -582,11 +608,12 @@ router.post("/day-tours", async (req, res) => {
         timestamp: "asc",
       },
     });
-
-    res.json(tours);
+    const result = generateResponse(true, null, tours);
+    res.json(result);
   } catch (error) {
     console.error("Error fetching day sessions:", error);
-    res.status(500).json({ error: "Failed to fetch day sessions" });
+    const result = generateResponse(false, "Failed to fetch day sessions");
+    res.status(500).json(result);
   }
 });
 

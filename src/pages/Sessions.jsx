@@ -6,6 +6,7 @@ import useFirebaseAuth from "../hooks/useFirebaseAuth";
 import SideNavbar from "../components/SideNavbar";
 import Navbar from "../components/Navbar";
 import Loader from "../components/Loader";
+import { RESULT_STATUS } from "../common/constant";
 
 const Sessions = ({ isExpanded, setIsExpanded }) => {
   // Initialize data as null instead of empty array
@@ -54,15 +55,16 @@ const Sessions = ({ isExpanded, setIsExpanded }) => {
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const result = await response.json();
 
-        const sessionData = await response.json();
-
+        if (result.status === RESULT_STATUS.ERROR) {
+          throw new Error(result.message);
+        }
         // Validate the required data exists
-        if (!sessionData.stats || !sessionData.recentSessions) {
+        if (!result.data.stats || !result.data.recentSessions) {
           throw new Error("Invalid data format received");
         }
-
-        setData(sessionData);
+        setData(result.data);
       } catch (err) {
         console.error("Error fetching sessions:", err);
         setError("Failed to load sessions. Please try again later.");
