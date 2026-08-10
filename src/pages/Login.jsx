@@ -4,6 +4,7 @@ import { BsGithub, BsGoogle } from "react-icons/bs";
 import useFirebaseAuth from "../hooks/useFirebaseAuth";
 import ContextValue from "../context/EventContext";
 import { RESULT_STATUS } from "../common/constant";
+import { apiFetch } from "../utils/apiFetch";
 
 const Login = ({ showAlert }) => {
   const navigate = useNavigate();
@@ -22,16 +23,13 @@ const Login = ({ showAlert }) => {
 
   const migrateUser = async (email, firebaseUid) => {
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/users/migrate-user`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, firebaseUid }),
-        }
-      );
+      const response = await apiFetch("/users/migrate-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, firebaseUid }),
+      });
 
       if (!response.ok) {
         const errorData = await response.json();

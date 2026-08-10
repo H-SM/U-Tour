@@ -11,6 +11,7 @@ import SearchUser from "./SearchUser";
 import debounce from "lodash/debounce";
 import { useNavigate } from "react-router-dom";
 import { FIXED_HOURS, RESULT_STATUS } from "../../common/constant";
+import { apiFetch } from "../../utils/apiFetch";
 
 const InputForm = ({
   handleInputChange,
@@ -87,16 +88,13 @@ const InputForm = ({
       }
       setLoadingSearch(true);
       try {
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/users/search`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ query }),
-          }
-        );
+        const response = await apiFetch("/users/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query }),
+        });
 
         if (!response.ok) {
           throw new Error("Search request failed");
@@ -219,16 +217,13 @@ const InputForm = ({
             : null,
       };
 
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/sessions/create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(sessionData),
-        }
-      );
+      const response = await apiFetch("/sessions/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(sessionData),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to create session");
@@ -271,16 +266,13 @@ const InputForm = ({
       if (!bookingData.departureDate) return;
       setIsLoadingHours(true);
       try {
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/tours/booked-hours`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ date: bookingData.departureDate }),
-          }
-        );
+        const response = await apiFetch("/tours/booked-hours", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ date: bookingData.departureDate }),
+        });
 
         if (!response.ok) {
           throw new Error("Failed to fetch booked hours");

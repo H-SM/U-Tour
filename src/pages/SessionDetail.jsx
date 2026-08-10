@@ -9,6 +9,7 @@ import Loader from "../components/Loader";
 import { Check, Share2, User } from "lucide-react";
 import Modal from "../components/Modal";
 import { locations, RESULT_STATUS } from "../common/constant";
+import { apiFetch } from "../utils/apiFetch";
 
 const SessionDetail = ({ isExpanded, setIsExpanded }) => {
   const { sessionId } = useParams();
@@ -53,9 +54,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
     const fetchSessionDetails = async () => {
       try {
         console.log("Session ID:", sessionId);
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/sessions/${sessionId}`
-        );
+        const response = await apiFetch(`/sessions/${sessionId}`);
         if (!response.ok) {
           throw new Error("Failed to fetch session details");
         }
@@ -77,9 +76,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
     const fetchUserDetails = async () => {
       try {
         // Fetch participant details
-        const participantResponse = await fetch(
-          `${process.env.REACT_APP_API_URL}/users/${session.userId}`
-        );
+        const participantResponse = await apiFetch(`/users/${session.userId}`);
         const participantData = await participantResponse.json();
         if (participantData.status === RESULT_STATUS.SUCCESS) {
           setParticipant(participantData.data);
@@ -93,8 +90,8 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
             "User ID:",
             session.userId
           );
-          const bookerResponse = await fetch(
-            `${process.env.REACT_APP_API_URL}/users/${session.bookingUserId}`
+          const bookerResponse = await apiFetch(
+            `/users/${session.bookingUserId}`
           );
           const result = await bookerResponse.json();
           if (result.status === RESULT_STATUS.SUCCESS) {
@@ -176,16 +173,13 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/sessions/${session.id}/state`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ state: "CANCEL" }),
-        }
-      );
+      const response = await apiFetch(`/sessions/${session.id}/state`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ state: "CANCEL" }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to cancel session");
