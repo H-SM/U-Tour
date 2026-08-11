@@ -471,6 +471,11 @@ router.post("/booked-hours", async (req, res) => {
           lt: endOfDay,
         },
       },
+      include: {
+        sessions: {
+          select: { bookingUserId: true },
+        },
+      },
     });
 
     console.log(tours);
@@ -485,6 +490,7 @@ router.post("/booked-hours", async (req, res) => {
         totalSize: tour.totalSize,
         to: tour.to,
         from: tour.from,
+        bookingUserIds: tour.sessions.map((session) => session.bookingUserId),
       };
     });
 

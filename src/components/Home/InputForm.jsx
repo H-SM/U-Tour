@@ -351,6 +351,12 @@ const InputForm = ({
         return hours;
       }
 
+      // Already have a booking of your own in this slot — don't offer it
+      // again, it'd just clutter the tour with duplicate bookings
+      if (bookedHour.bookingUserIds?.includes(userDetailsFirebase?.uid)) {
+        return hours;
+      }
+
       // Another tour already exists for this hour — you can only join it if it's
       // headed the same way and there's still room for your group
       const sameRoute =
