@@ -7,6 +7,7 @@ import SideNavbar from "../components/SideNavbar";
 import Navbar from "../components/Navbar";
 import Loader from "../components/Loader";
 import { RESULT_STATUS } from "../common/constant";
+import { apiFetch } from "../utils/apiFetch";
 
 const Sessions = ({ isExpanded, setIsExpanded }) => {
   // Initialize data as null instead of empty array
@@ -35,7 +36,7 @@ const Sessions = ({ isExpanded, setIsExpanded }) => {
       }
     };
     authenticateUser();
-  }, []);
+  }, [checkAuth, navigate]);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -48,8 +49,8 @@ const Sessions = ({ isExpanded, setIsExpanded }) => {
       }
 
       try {
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/users/${userDetailsFirebase.uid}/get-combined`
+        const response = await apiFetch(
+          `/users/${userDetailsFirebase.uid}/get-combined`
         );
 
         if (!response.ok) {

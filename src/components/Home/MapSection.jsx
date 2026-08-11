@@ -6,6 +6,7 @@ const MapSection = ({ bookingData }) => {
     <div className="w-full md:w-full bg-white/10 backdrop-blur-md rounded-3xl border border-white/20 overflow-hidden">
       <div className="w-full h-full min-h-[500px]">
         <iframe
+          title="Tour route map"
           src={`https://www.google.com/maps/embed/v1/directions?origin=${
             bookingData.from ? bookingData.from : "UPES"
           }&destination=${

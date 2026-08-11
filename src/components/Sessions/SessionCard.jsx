@@ -3,6 +3,7 @@ import { Clock, MapPin, User, AlertCircle } from "lucide-react";
 import Modal from "../Modal";
 import { useNavigate } from "react-router-dom";
 import { locations, RESULT_STATUS } from "../../common/constant";
+import { apiFetch } from "../../utils/apiFetch";
 
 const SessionCard = ({ session }) => {
   const [loading, setLoading] = useState(false);
@@ -56,16 +57,13 @@ const SessionCard = ({ session }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/sessions/${session.id}/state`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ state: "CANCEL" }),
-        }
-      );
+      const response = await apiFetch(`/sessions/${session.id}/state`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ state: "CANCEL" }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to cancel session");
@@ -154,6 +152,10 @@ const SessionCard = ({ session }) => {
           </div>
         </div>
       </div>
+
+      {error && (
+        <p className="text-sm text-red-400 text-right mb-2">{error}</p>
+      )}
 
       <div className="flex justify-end space-x-3">
         {session.state === "QUEUED" && (

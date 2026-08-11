@@ -42,52 +42,20 @@ const convertToIST = (date) => {
   return istDate;
 };
 
-// Create a new tour or add session to existing tour
+const MAX_TOUR_SIZE = 10;
+
+// Create a new tour, or join an existing one heading the same way at the same time
 async function manageTourForSession(session) {
   const sessionTimestamp = new Date(session.departureTime);
-  // const hourStart = new Date(
-  //   sessionTimestamp.getFullYear(),
-  //   sessionTimestamp.getMonth(),
-  //   sessionTimestamp.getDate(),
-  //   sessionTimestamp.getHours(),
-  //   0,
-  //   0
-  // );
+  const sessionTeamSize = session.team ? session.team.size : 1;
 
   // Check if a tour exists for this timestamp
   let tour = await prisma.tour.findFirst({
     where: {
       timestamp: sessionTimestamp,
     },
-    include: {
-      sessions: true,
-    },
   });
 
-  //TODO: think about how to handle the destination and the starting point for a tour
-  // Changed to a single session tour for now
-  const sessionTeamSize = session.team ? session.team.size : 1;
-  // const totalCurrentSize = tour ? tour.totalSize : 0;
-
-  // Special case: Single team with > 10 members gets its own tour
-  // if (sessionTeamSize > 10 && !tour) {
-  //   tour = await prisma.tour.create({
-  //     data: {
-  //       id: generateCustomId(),
-  //       timestamp: hourStart,
-  //       totalSize: sessionTeamSize,
-  //       sessions: {
-  //         connect: { id: session.id },
-  //       },
-  //     },
-  //   });
-
-  //   // Add tour to queue
-  //   await addTourToQueue(tour);
-  //   return tour.id;
-  // }
-
-  // If no existing tour
   if (!tour) {
     tour = await prisma.tour.create({
       data: {
@@ -104,44 +72,28 @@ async function manageTourForSession(session) {
 
     // Add tour to queue
     await addTourToQueue(tour);
-  } else {
-    // Throw an error if the hour is fully booked
+  } else if (
+    tour.to !== session.to ||
+    tour.from !== session.from ||
+    tour.totalSize + sessionTeamSize > MAX_TOUR_SIZE
+  ) {
+    // A different route is already committed for this slot, or there's no room left to share it
     throw new Error(
       "This hour is fully booked. No more sessions can be added."
     );
+  } else {
+    // Join the existing tour
+    tour = await prisma.tour.update({
+      where: { id: tour.id },
+      data: {
+        totalSize: tour.totalSize + sessionTeamSize,
+        sessions: {
+          connect: { id: session.id },
+        },
+      },
+    });
   }
 
-  // if (!tour) {
-  //   tour = await prisma.tour.create({
-  //     data: {
-  //       id: generateCustomId(),
-  //       timestamp: hourStart,
-  //       totalSize: sessionTeamSize,
-  //       sessions: {
-  //         connect: { id: session.id },
-  //       },
-  //     },
-  //   });
-
-  //   // Add tour to queue
-  //   await addTourToQueue(tour);
-  // } else if (totalCurrentSize + sessionTeamSize > 10) {
-  //   // Throw an error if the hour is fully booked
-  //   throw new Error(
-  //     "This hour is fully booked. No more sessions can be added."
-  //   );
-  // } else {
-  //   // Add to existing tour
-  //   tour = await prisma.tour.update({
-  //     where: { id: tour.id },
-  //     data: {
-  //       totalSize: totalCurrentSize + sessionTeamSize,
-  //       sessions: {
-  //         connect: { id: session.id },
-  //       },
-  //     },
-  //   });
-  // }
   return tour.id;
 }
 
@@ -531,6 +483,8 @@ router.post("/booked-hours", async (req, res) => {
       return {
         hour: istTourTimestamp.getHours(),
         totalSize: tour.totalSize,
+        to: tour.to,
+        from: tour.from,
       };
     });
 

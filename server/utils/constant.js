@@ -7,8 +7,8 @@ const locations = [
   { value: "upes-cricket-ground", label: "Cricket Ground" },
   { value: "upes-library", label: "UPES Library" },
   { value: "upes-food-court", label: "Food Court" },
-  { value: "upes-9th-block", label: "Block 9" },
-  { value: "upes-10th-block", label: "10th Block" },
+  { value: "ab-9-upes", label: "9th Block" },
+  { value: "lab-of-block-10-upes", label: "10th Block" },
 ];
 
 // Generate response object

@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext, useCallback } from 'react';
+import { useState, useContext, useCallback } from 'react';
 import { auth } from '../firebase/config';
 import {
     createUserWithEmailAndPassword,
@@ -36,7 +36,7 @@ export const useFirebaseAuth = () => {
         }
     }, [setUserDetailsFirebase, userDetailsFirebase]);
 
-    const checkAuth = async () => {
+    const checkAuth = useCallback(() => {
         return new Promise((resolve) => {
             const unsubscribe = onAuthStateChanged(auth, (user) => {
                 unsubscribe();
@@ -44,7 +44,7 @@ export const useFirebaseAuth = () => {
                 resolve(user);
             });
         });
-    };
+    }, [handleAuthStateChange]);
 
     const signUp = async (email, password, name) => {
         try {
