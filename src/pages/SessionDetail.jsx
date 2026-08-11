@@ -41,14 +41,14 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
       try {
         const user = await checkAuth();
         if (!user) {
-          //   navigate("/login");
+          navigate("/login");
         }
       } catch (error) {
         console.error("Authentication error:", error);
       }
     };
     authenticateUser();
-  }, [checkAuth]);
+  }, [checkAuth, navigate]);
 
   useEffect(() => {
     const fetchSessionDetails = async () => {
