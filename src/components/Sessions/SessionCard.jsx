@@ -153,6 +153,10 @@ const SessionCard = ({ session }) => {
         </div>
       </div>
 
+      {error && (
+        <p className="text-sm text-red-400 text-right mb-2">{error}</p>
+      )}
+
       <div className="flex justify-end space-x-3">
         {session.state === "QUEUED" && (
           <button

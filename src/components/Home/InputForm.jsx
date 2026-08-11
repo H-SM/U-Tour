@@ -2,16 +2,19 @@ import React, {
   useContext,
   useState,
   useCallback,
+  useMemo,
   useRef,
   useEffect,
 } from "react";
 import ContextValue from "./../../context/EventContext";
-import { MapPin, Clock, Mail, Users, User, Search, X } from "lucide-react";
+import { Users, User, X } from "lucide-react";
 import SearchUser from "./SearchUser";
 import debounce from "lodash/debounce";
 import { useNavigate } from "react-router-dom";
 import { FIXED_HOURS, RESULT_STATUS } from "../../common/constant";
 import { apiFetch } from "../../utils/apiFetch";
+
+const MAX_TOUR_SIZE = 10;
 
 const InputForm = ({
   handleInputChange,
@@ -24,7 +27,6 @@ const InputForm = ({
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [isLoadingHours, setIsLoadingHours] = useState(false);
   const [activeSearchField, setActiveSearchField] = useState(null);
   const [loadingSearch, setLoadingSearch] = useState(false);
@@ -49,7 +51,7 @@ const InputForm = ({
       }));
       setSelectedUser(userDetailsFirebase);
     }
-  }, [useLoggedInUser, userDetailsFirebase]);
+  }, [useLoggedInUser, userDetailsFirebase, setBookingData]);
 
   // Click outside handler
   useEffect(() => {
@@ -80,13 +82,14 @@ const InputForm = ({
   };
 
   // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce(async (query) => {
+  const searchUsers = useCallback(
+    async (query) => {
       if (!query || query.length < 3) {
         setSearchResults([]);
         return;
       }
       setLoadingSearch(true);
+      setIsSearchOpen(true);
       try {
         const response = await apiFetch("/users/search", {
           method: "POST",
@@ -103,7 +106,6 @@ const InputForm = ({
         const result = await response.json();
         if (result.status === RESULT_STATUS.SUCCESS) {
           setSearchResults(result.data.users);
-          setIsSearchOpen(true);
         } else {
           showAlert("Error searching users", "error");
         }
@@ -113,8 +115,13 @@ const InputForm = ({
       } finally {
         setLoadingSearch(false);
       }
-    }, 400),
-    []
+    },
+    [showAlert]
+  );
+
+  const debouncedSearch = useMemo(
+    () => debounce(searchUsers, 400),
+    [searchUsers]
   );
 
   const handleUserSearch = (event) => {
@@ -124,22 +131,19 @@ const InputForm = ({
       ...prev,
       [name]: value,
     }));
-    setSearchQuery(value);
     setActiveSearchField(name);
     if (name === "name" || name === "email") {
-      setSearchQuery(value);
-
       if (value.length >= 3) {
         debouncedSearch(value);
       } else {
         setSearchResults([]);
+        setIsSearchOpen(false);
       }
     }
   };
 
   const handleUserSelect = (user) => {
     setSelectedUser(user);
-    setSearchQuery(""); // Clear search query
     setBookingData((prev) => ({
       ...prev,
       name: user.displayName,
@@ -294,7 +298,7 @@ const InputForm = ({
     };
 
     fetchBookedHours();
-  }, [bookingData.departureDate]);
+  }, [bookingData.departureDate, showAlert]);
 
   const getMinDate = () => {
     const now = new Date();
@@ -311,10 +315,10 @@ const InputForm = ({
   };
 
   const getAvailableHours = () => {
-    const MAX_SINGLE_SIZE = 10;
-    const MAX_TEAM_SIZE = 10;
     const now = new Date();
     const selectedDate = new Date(bookingData.departureDate);
+    const requestedSize =
+      bookingData.type === "team" ? parseInt(bookingData.teamSize || 1, 10) : 1;
 
     // Check if the selected date is today
     const isToday =
@@ -322,7 +326,7 @@ const InputForm = ({
       now.getMonth() === selectedDate.getMonth() &&
       now.getDate() === selectedDate.getDate();
 
-    return FIXED_HOURS.filter((hour) => {
+    return FIXED_HOURS.reduce((hours, hour) => {
       const hourValue = new Date(`2000-01-01T${hour.value}`).getHours();
 
       if (isToday) {
@@ -335,23 +339,36 @@ const InputForm = ({
 
         // Filter out hours that have already passed or are too close to passing
         if (hourDateTime <= now || isNearNextHour) {
-          return false;
+          return hours;
         }
       }
+
       const bookedHour = bookedHours.find((b) => b.hour === hourValue);
 
-      // if (!bookedHour) return true; // No bookings for this hour
-      return !bookedHour; // No bookings for this hour
+      if (!bookedHour) {
+        // No tour booked for this hour yet
+        hours.push({ ...hour, isShared: false });
+        return hours;
+      }
 
-      // if (bookingData.type === "single") {
-      //   return bookedHour.totalSize < MAX_SINGLE_SIZE;
-      // }
+      // Another tour already exists for this hour — you can only join it if it's
+      // headed the same way and there's still room for your group
+      const sameRoute =
+        bookedHour.to === bookingData.to && bookedHour.from === bookingData.from;
+      const hasRoom = bookedHour.totalSize + requestedSize <= MAX_TOUR_SIZE;
 
-      // // For team bookings, check remaining capacity
-      // const remainingCapacity = MAX_TEAM_SIZE - bookedHour.totalSize;
-      // return remainingCapacity >= parseInt(bookingData.teamSize || 1);
-    });
+      if (sameRoute && hasRoom) {
+        hours.push({ ...hour, isShared: true });
+      }
+
+      return hours;
+    }, []);
   };
+
+  const availableHours = getAvailableHours();
+  const selectedHourInfo = availableHours.find(
+    (hour) => hour.value === bookingData.departureTime
+  );
 
   const modifiedHandleInputChange = (event) => {
     const { name, value } = event.target;
@@ -448,7 +465,7 @@ const InputForm = ({
           </div>
           {activeSearchField === "name" && (
             <SearchUser
-              isOpen={true}
+              isOpen={isSearchOpen}
               onClose={() => setActiveSearchField(null)}
               searchResults={searchResults}
               onSelect={handleUserSelect}
@@ -485,7 +502,7 @@ const InputForm = ({
             )}
             {activeSearchField === "email" && (
               <SearchUser
-                isOpen={true}
+                isOpen={isSearchOpen}
                 onClose={() => setActiveSearchField(null)}
                 searchResults={searchResults}
                 onSelect={handleUserSelect}
@@ -570,9 +587,10 @@ const InputForm = ({
                 disabled={bookingData.departureDate === ""}
               >
                 <option value="">Select Time</option>
-                {getAvailableHours().map((hour) => (
+                {availableHours.map((hour) => (
                   <option key={hour.value} value={hour.value}>
                     {hour.label}
+                    {hour.isShared ? " · Shared tour" : ""}
                   </option>
                 ))}
               </select>
@@ -583,6 +601,16 @@ const InputForm = ({
             )}
           </div>
         </div>
+
+        {selectedHourInfo?.isShared && (
+          <div className="flex items-start gap-2 bg-amber-400/10 border border-amber-400/30 rounded-lg px-4 py-3">
+            <Users size={16} className="text-amber-300 mt-0.5 shrink-0" />
+            <p className="text-amber-200 text-sm text-left">
+              Heads up — another group already has this time slot. You'll be
+              sharing this tour with them.
+            </p>
+          </div>
+        )}
 
         {/* Submit Button */}
         <button

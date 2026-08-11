@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import ContextValue from "../context/EventContext";
 import useFirebaseAuth from "../hooks/useFirebaseAuth";
 import Destination from "../components/Home/Destination";
@@ -53,7 +53,7 @@ const Dashboard = ({ showAlert, isExpanded, setIsExpanded }) => {
       }
     };
     authenticateUser();
-  }, []);
+  }, [checkAuth, navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">

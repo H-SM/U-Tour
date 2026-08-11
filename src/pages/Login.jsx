@@ -1,14 +1,12 @@
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BsGithub, BsGoogle } from "react-icons/bs";
 import useFirebaseAuth from "../hooks/useFirebaseAuth";
-import ContextValue from "../context/EventContext";
 import { RESULT_STATUS } from "../common/constant";
 import { apiFetch } from "../utils/apiFetch";
 
 const Login = ({ showAlert }) => {
   const navigate = useNavigate();
-  const { UserDetailsFirebase } = useContext(ContextValue);
   const { signUp, signIn, signInWithGoogle, signInWithGithub, forgotPassword } =
     useFirebaseAuth();
   const [loading, setLoading] = useState(false);
@@ -283,9 +281,10 @@ const Login = ({ showAlert }) => {
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-background-secondary hover:bg-chart-background rounded-lg text-white transition duration-150"
+                disabled={loading}
+                className="w-full py-2.5 bg-background-secondary hover:bg-chart-background rounded-lg text-white transition duration-150 disabled:opacity-50"
               >
-                {signup ? "Sign up" : "Log in"}
+                {loading ? "Please wait..." : signup ? "Sign up" : "Log in"}
               </button>
             </form>
 

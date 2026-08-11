@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import "./App.css";
 
 import Alert from "./components/alert";
@@ -13,7 +13,7 @@ function App() {
   const [alert, setAlert] = useState(null);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const showAlert = (message, type) => {
+  const showAlert = useCallback((message, type) => {
     setAlert({
       msg: message,
       type: type,
@@ -21,7 +21,7 @@ function App() {
     setTimeout(() => {
       setAlert(null);
     }, 2000);
-  };
+  }, []);
 
   return (
     <div className="text-center h-[100%] bg-background">

@@ -5,7 +5,6 @@ import {
   updateEmail,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth } from "../firebase/config";
 import ContextValue from "../context/EventContext";
@@ -157,7 +156,7 @@ const Setting = ({ isExpanded, setIsExpanded, showAlert }) => {
       }
     };
     authenticateUser();
-  }, []);
+  }, [checkAuth, navigate, showAlert]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">

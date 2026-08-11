@@ -32,32 +32,6 @@ router.post("/create", async (req, res) => {
       team, // Optional team information
     } = req.body;
 
-    const sessionTimestamp = new Date(departureTime);
-    const hourStart = new Date(
-      sessionTimestamp.getFullYear(),
-      sessionTimestamp.getMonth(),
-      sessionTimestamp.getDate(),
-      sessionTimestamp.getHours(),
-      0,
-      0
-    );
-
-    // Check existing tours for this hour
-    const existingTour = await prisma.tour.findFirst({
-      where: {
-        timestamp: hourStart,
-      },
-    });
-    // AykTlpjdYSvfjfPL1xLAeEoPa9gI
-    // 67Aq8hTXwrDd9wLCzmDdcNGpzeET
-    const sessionTeamSize = team ? team.size : 1;
-    const totalCurrentSize = existingTour ? existingTour.totalSize : 0;
-
-    if (existingTour && totalCurrentSize + sessionTeamSize > 10) {
-      const result = generateResponse(false, "This hour is fully booked. No more sessions can be added.");
-      return res.status(400).json(result);
-    }
-
     // Handle booking user
     let finalBookingUserId;
     let isBookedByFirebaseUser = false;
@@ -380,6 +354,49 @@ router.get("/upcoming", async (req, res) => {
   }
 });
 
+// Get session statistics
+router.get("/stats", async (req, res) => {
+  try {
+    const [sessionsByState, last24Hours, popularDestinations] = await Promise.all([
+      // Total sessions by state
+      prisma.session.groupBy({
+        by: ["state"],
+        _count: { state: true },
+      }),
+      // Sessions created in the last 24 hours
+      prisma.session.count({
+        where: {
+          createdAt: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        },
+      }),
+      // Most popular destinations
+      prisma.session
+        .groupBy({
+          by: ["to"],
+          _count: { to: true },
+        })
+        .then((rows) =>
+          rows
+            .sort((a, b) => b._count.to - a._count.to)
+            .slice(0, 5)
+        ),
+    ]);
+
+    const result = generateResponse(true, null, {
+      sessionsByState,
+      last24Hours,
+      popularDestinations,
+    });
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching session statistics:", error);
+    const result = generateResponse(false, "Failed to fetch session statistics");
+    res.status(500).json(result);
+  }
+});
+
 // Route to get session and associated user information
 router.get("/:sessionId", async (req, res) => {
   try {
@@ -436,49 +453,6 @@ router.get("/range/user/:userId", async (req, res) => {
   } catch (error) {
     console.error("Error fetching sessions by date range:", error);
     const result = generateResponse(false, "Failed to fetch sessions by date range");
-    res.status(500).json(result);
-  }
-});
-
-// Get session statistics
-router.get("/stats", async (req, res) => {
-  try {
-    const stats = await prisma.$transaction([
-      // Total sessions by state
-      prisma.session.groupBy({
-        by: ["state"],
-        _count: true,
-      }),
-      // Sessions created in the last 24 hours
-      prisma.session.count({
-        where: {
-          createdAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          },
-        },
-      }),
-      // Most popular destinations
-      prisma.session.groupBy({
-        by: ["to"],
-        _count: true,
-        orderBy: {
-          _count: {
-            _all: "desc",
-          },
-        },
-        take: 5,
-      }),
-    ]);
-
-    const result = generateResponse(true, null, {
-      sessionsByState: stats[0],
-      last24Hours: stats[1],
-      popularDestinations: stats[2],
-    });
-    res.json(result);
-  } catch (error) {
-    console.error("Error fetching session statistics:", error);
-    const result = generateResponse(false, "Failed to fetch session statistics");
     res.status(500).json(result);
   }
 });

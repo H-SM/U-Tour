@@ -1,7 +1,38 @@
-import { Building2, MapPin, Navigation, Search } from "lucide-react";
-import React from "react";
+import { Navigation, RadioTower, MapPin, Search } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { apiFetch } from "../../utils/apiFetch";
+import { RESULT_STATUS } from "../../common/constant";
 
 const Destination = ({ from, to, onFromChange, onToChange, locations }) => {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchStats = async () => {
+      try {
+        const response = await apiFetch("/sessions/stats");
+        const result = await response.json();
+        if (isMounted && result.status === RESULT_STATUS.SUCCESS) {
+          setStats(result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching session stats:", error);
+      }
+    };
+
+    fetchStats();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const bookedLast24h = stats?.last24Hours;
+  const activeNow = stats
+    ? stats.sessionsByState?.find((entry) => entry.state === "ACTIVE")
+        ?._count?.state ?? 0
+    : undefined;
+
   return (
     <div className="w-full flex flex-col md:flex-row justify-between bg-white/10 backdrop-blur-md rounded-3xl px-6 py-4 border border-white/20 gap-4">
       <div className="flex flex-col justify-start items-start w-full md:w-7/12 mb-2">
@@ -60,16 +91,24 @@ const Destination = ({ from, to, onFromChange, onToChange, locations }) => {
                 <div className="bg-white/5 rounded-lg p-4 flex items-center justify-start space-x-3">
                   <Navigation className="w-5 h-5 text-emerald-400 text-left" />
                   <div className="flex flex-col items-start justify-start">
-                    <p className="text-white font-bold text-left">Sessions done today</p>
-                    <p className="text-white/80 text-sm ">3 sessions</p>
+                    <p className="text-white font-bold text-left">Recent Bookings</p>
+                    <p className="text-white/80 text-sm">
+                      {bookedLast24h === undefined
+                        ? "Loading..."
+                        : `${bookedLast24h} in the last 24h`}
+                    </p>
                   </div>
                 </div>
 
                 <div className="bg-white/5 rounded-lg p-4 flex items-center justify-start space-x-3">
-                <Building2 className="w-5 h-5 text-blue-400 text-left" />
+                  <RadioTower className="w-5 h-5 text-blue-400 text-left" />
                   <div className="flex flex-col items-start justify-start">
-                  <p className="text-white text-sm font-bold text-left">Available Robots</p>
-                  <p className="text-white/80 text-sm">3 robots nearby</p>
+                    <p className="text-white text-sm font-bold text-left">Tours In Progress</p>
+                    <p className="text-white/80 text-sm">
+                      {activeNow === undefined
+                        ? "Loading..."
+                        : `${activeNow} active now`}
+                    </p>
                   </div>
                 </div>
               </div>

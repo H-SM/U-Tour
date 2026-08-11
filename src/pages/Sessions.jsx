@@ -36,7 +36,7 @@ const Sessions = ({ isExpanded, setIsExpanded }) => {
       }
     };
     authenticateUser();
-  }, []);
+  }, [checkAuth, navigate]);
 
   useEffect(() => {
     const fetchSessions = async () => {

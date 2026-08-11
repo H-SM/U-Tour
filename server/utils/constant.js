@@ -7,7 +7,7 @@ const locations = [
   { value: "upes-cricket-ground", label: "Cricket Ground" },
   { value: "upes-library", label: "UPES Library" },
   { value: "upes-food-court", label: "Food Court" },
-  { value: "upes-9th-block", label: "Block 9" },
+  { value: "ab-9-upes", label: "9th Block" },
   { value: "upes-10th-block", label: "10th Block" },
 ];
 

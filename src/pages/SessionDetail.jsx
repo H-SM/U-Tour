@@ -48,7 +48,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
       }
     };
     authenticateUser();
-  }, []);
+  }, [checkAuth]);
 
   useEffect(() => {
     const fetchSessionDetails = async () => {
@@ -408,6 +408,7 @@ const SessionDetail = ({ isExpanded, setIsExpanded }) => {
                     </div>
                     <div className="w-full h-full max-h-[500px] rounded-3xl overflow-hidden bg-gray-600">
                       <iframe
+                        title="Session route map"
                         src={`https://www.google.com/maps/embed/v1/directions?origin=${
                           session.from ? session.from : "UPES"
                         }&destination=${
